@@ -1,7 +1,7 @@
 """Release contract settings: tasks, metric floors, and resource limits.
 
 This is the single generic task-requirement schema. Production requirements
-live in prod.toml only; there is no separate release configuration layer.
+live in the release settings/profile rather than validation implementation.
 """
 
 from __future__ import annotations
@@ -30,11 +30,7 @@ class MetricReq(SettingsModel):
 
 
 class TaskReq(SettingsModel):
-    """One task requirement: identity, data floor, metric floors.
-
-    Task maturity is governed exclusively by the multimodal task registry;
-    this schema does not re-declare it.
-    """
+    """One task requirement: identity, data floor, metric floors."""
 
     name: str = Field(min_length=1)
     min_samples: int = Field(default=0, ge=0)
@@ -57,13 +53,7 @@ class CapabilityPolicy(SettingsModel):
 
 
 class ReproducibilitySettings(SettingsModel):
-    """Multi-run reproducibility contract for one release.
-
-    ``seeds`` are the campaign seeds that must each produce one immutable run
-    receipt before release evidence is accepted. ``metric_tolerances`` names
-    the only metrics compared for seed-to-seed stability; a metric without an
-    explicit tolerance is never implicitly compared.
-    """
+    """Multi-run reproducibility contract for one release."""
 
     seeds: tuple[int, ...] = ()
     require_deterministic_execution: bool = False
@@ -82,18 +72,26 @@ class ReproducibilitySettings(SettingsModel):
 
 
 class ReleaseSettings(SettingsModel):
-    """Task requirements and runtime limits for one profile."""
+    """Task, quality, capacity, and runtime requirements for one profile."""
 
     release_id: str | None = None
-
     tasks: tuple[TaskReq, ...] = ()
     optional_tasks: tuple[str, ...] = ()
-
     blocked_capabilities: tuple[CapabilityPolicy, ...] = ()
+    reproducibility: ReproducibilitySettings = Field(
+        default_factory=ReproducibilitySettings
+    )
+    limits: RuntimeLimits = Field(default_factory=RuntimeLimits)
 
-    reproducibility: ReproducibilitySettings = ReproducibilitySettings()
-
-    limits: RuntimeLimits = RuntimeLimits()
+    # Production model-capacity policy. Validation consumes these values; it
+    # does not own separate threshold constants.
+    min_model_fusion_dim: int = Field(default=512, ge=0)
+    min_model_projection_dim: int = Field(default=512, ge=0)
+    min_model_raw_text_vocab_size: int = Field(default=32768, ge=0)
+    min_model_raw_text_max_tokens: int = Field(default=512, ge=0)
+    min_model_raw_image_size: int = Field(default=224, ge=0)
+    min_model_raw_audio_num_samples: int = Field(default=160000, ge=0)
+    min_model_raw_video_frames: int = Field(default=8, ge=0)
 
     require_benchmark: bool = False
     require_baseline: bool = False
