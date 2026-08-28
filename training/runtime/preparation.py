@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import inspect
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 import torch
 
@@ -16,7 +15,7 @@ from config.multimodal.training_settings import (
 from mmcrawler_datasets.collation.tensor_ops import IGNORE_LABEL
 from mmcrawler_datasets.dataloader import build_dataloader
 from mmcrawler_datasets.schema import DatasetSplit
-from multimodal.model.contracts import LOGICAL_TO_PHYSICAL_MODALITIES
+from multimodal.model.contracts import CollatedBatch, LOGICAL_TO_PHYSICAL_MODALITIES
 from multimodal.model.initialization import initialize_model_from_scratch
 from multimodal.tasks.registry import (
     get_task,
@@ -47,6 +46,19 @@ if TYPE_CHECKING:
     from multimodal.model.model import MultimodalModel
     from multimodal.tokenization.text import VocabularyTokenizer
     from training.runtime.planner import TrainingScalePlan
+
+
+class SchedulerFactory(Protocol):
+    """Factory contract for schedulers that advance on optimizer updates."""
+
+    def __call__(
+        self,
+        *,
+        optimizer: torch.optim.Optimizer,
+        settings: TrainingSettings,
+        num_training_batches: int,
+        completed_optimizer_steps: int,
+    ) -> object | None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,9 +153,7 @@ def validate_dense_training_configuration(
         if definition is None:
             continue
         for required in definition.required_input_modalities:
-            physical = LOGICAL_TO_PHYSICAL_MODALITIES.get(
-                required, (required,)
-            )
+            physical = LOGICAL_TO_PHYSICAL_MODALITIES.get(required, (required,))
             if physical and not set(physical).intersection(enabled_modalities):
                 errors.append(
                     f"task {task_name!r} requires disabled modality {required!r}"
@@ -156,15 +166,12 @@ def validate_dense_training_configuration(
             for definition in (get_task(task_name),)
             if definition is not None
             for required in definition.required_input_modalities
-            for physical in LOGICAL_TO_PHYSICAL_MODALITIES.get(
-                required, (required,)
-            )
+            for physical in LOGICAL_TO_PHYSICAL_MODALITIES.get(required, (required,))
         }
         missing = sorted(required_physical - observed_modalities)
         if missing:
             errors.append(
-                "training split lacks required modalities: "
-                + ", ".join(missing)
+                "training split lacks required modalities: " + ", ".join(missing)
             )
     if training_settings.release_stage == "production_model":
         if training_settings.run_mode != "full":
@@ -174,41 +181,34 @@ def validate_dense_training_configuration(
         if training_settings.device == "cpu":
             errors.append("production dense training cannot target CPU")
     if errors:
-        raise ValueError(
-            "dense_transformer preflight failed: " + "; ".join(errors)
-        )
+        raise ValueError("dense_transformer preflight failed: " + "; ".join(errors))
 
 
-def dense_batch_requires_causal_targets(*, batch: object) -> bool:
+def dense_batch_requires_causal_targets(*, batch: CollatedBatch) -> bool:
     """Return whether this batch contains a causal generative objective."""
 
-    task_types = getattr(batch, "task_types", None)
-    if isinstance(task_types, list) and task_types:
-        return any(task_requires_causal_decoder(name) for name in task_types)
+    if batch.task_types:
+        return any(task_requires_causal_decoder(name) for name in batch.task_types)
 
-    labels = getattr(batch, "decoder_labels", None)
+    labels = batch.decoder_labels
     return bool(
-        torch.is_tensor(labels)
+        labels is not None
         and labels.numel() > 0
         and labels.ne(IGNORE_LABEL).any().item()
     )
 
 
-def validate_dense_decoder_batch(*, batch: object) -> None:
+def validate_dense_decoder_batch(*, batch: CollatedBatch) -> None:
     """Validate decoder tensors for rows with causal generative objectives."""
 
-    input_ids = getattr(batch, "decoder_input_ids", None)
-    labels = getattr(batch, "decoder_labels", None)
-    attention_mask = getattr(batch, "decoder_attention_mask", None)
-    values = (input_ids, labels, attention_mask)
-    if not all(torch.is_tensor(value) for value in values):
+    input_ids = batch.decoder_input_ids
+    labels = batch.decoder_labels
+    attention_mask = batch.decoder_attention_mask
+    if input_ids is None or labels is None or attention_mask is None:
         raise ValueError(
             "dense_transformer causal batch requires decoder_input_ids, "
             "decoder_labels, and decoder_attention_mask"
         )
-    assert torch.is_tensor(input_ids)
-    assert torch.is_tensor(labels)
-    assert torch.is_tensor(attention_mask)
     if input_ids.ndim != 2 or labels.shape != input_ids.shape:
         raise ValueError(
             "dense decoder inputs and labels must share [batch, tokens]"
@@ -218,16 +218,15 @@ def validate_dense_decoder_batch(*, batch: object) -> None:
     if input_ids.shape[1] < 2:
         raise ValueError("dense decoder batch requires at least two tokens")
 
-    task_types = getattr(batch, "task_types", None)
-    required_rows: list[int]
-    if isinstance(task_types, list) and task_types:
-        required_rows = [
+    required_rows = (
+        [
             index
-            for index, task_type in enumerate(task_types)
+            for index, task_type in enumerate(batch.task_types)
             if task_requires_causal_decoder(task_type)
         ]
-    else:
-        required_rows = list(range(input_ids.shape[0]))
+        if batch.task_types
+        else list(range(input_ids.shape[0]))
+    )
 
     if not required_rows:
         return
@@ -312,7 +311,7 @@ def prepare_training_runtime(
         [torch.nn.Module, TrainingSettings],
         torch.optim.Optimizer,
     ],
-    scheduler_factory: Callable[..., object | None],
+    scheduler_factory: SchedulerFactory,
     logger: ProjectLogger,
     device: torch.device,
     dataset_root: Path,
@@ -361,9 +360,7 @@ def prepare_training_runtime(
     )
     optimizer = optimizer_factory(model, training_settings)
     grad_scaler = build_grad_scaler(precision_runtime)
-    completed_optimizer_steps = resume_optimizer_steps(
-        settings=training_settings,
-    )
+    completed_optimizer_steps = resume_optimizer_steps(settings=training_settings)
     scheduler = build_training_scheduler(
         scheduler_factory=scheduler_factory,
         optimizer=optimizer,
@@ -382,9 +379,7 @@ def prepare_training_runtime(
         initialization_metadata=initialization_metadata,
         dataset_manifest_sha256=dataset_manifest_sha256,
     )
-    resumed_from_run_id = resolve_resume_lineage(
-        settings=training_settings,
-    )
+    resumed_from_run_id = resolve_resume_lineage(settings=training_settings)
     return PreparedTrainingRuntime(
         model=model,
         model_factory=model_factory,
@@ -405,31 +400,14 @@ def prepare_training_runtime(
 
 def build_training_scheduler(
     *,
-    scheduler_factory: Callable[..., object | None],
+    scheduler_factory: SchedulerFactory,
     optimizer: torch.optim.Optimizer,
     settings: TrainingSettings,
     num_training_batches: int,
     completed_optimizer_steps: int,
 ) -> object | None:
-    """Require custom schedulers to receive the real update cadence."""
+    """Build a scheduler against the explicit optimizer-update cadence."""
 
-    try:
-        parameters = inspect.signature(scheduler_factory).parameters
-    except (TypeError, ValueError) as exc:
-        raise TypeError(
-            "scheduler factory must expose a signature that accepts "
-            "num_training_batches"
-        ) from exc
-    supports_keywords = any(
-        parameter.kind is inspect.Parameter.VAR_KEYWORD
-        for parameter in parameters.values()
-    )
-    required = {"num_training_batches", "completed_optimizer_steps"}
-    if not supports_keywords and not required <= set(parameters):
-        raise TypeError(
-            "scheduler factory must accept num_training_batches and "
-            "completed_optimizer_steps so scheduler time units stay correct"
-        )
     return scheduler_factory(
         optimizer=optimizer,
         settings=settings,
@@ -441,6 +419,7 @@ def build_training_scheduler(
 __all__ = [
     "PreparedTrainingBackend",
     "PreparedTrainingRuntime",
+    "SchedulerFactory",
     "build_training_scheduler",
     "open_training_split",
     "prepare_training_backend",
