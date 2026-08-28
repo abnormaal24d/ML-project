@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -72,14 +73,16 @@ class TranscriptionSettings(SettingsModel):
         if not self.production_mode or not self.enabled:
             return self
 
+        pinned_fields = (
+            ("model_name", self.model_name),
+            ("model_revision", self.model_revision),
+            ("model_artifact_hash", self.model_artifact_hash),
+            ("backend_version", self.backend_version),
+        )
         missing = [
-            field_name
-            for field_name in (
-                "model_revision",
-                "model_artifact_hash",
-                "backend_version",
-            )
-            if getattr(self, field_name) is None
+            name
+            for name, value in pinned_fields
+            if value is None or (isinstance(value, str) and not value.strip())
         ]
         if missing:
             raise ValueError(
@@ -89,6 +92,13 @@ class TranscriptionSettings(SettingsModel):
         if not self.local_files_only:
             raise ValueError(
                 "production Whisper preprocessing requires local_files_only=true"
+            )
+        if not (
+            PurePosixPath(self.model_name).is_absolute()
+            or PureWindowsPath(self.model_name).is_absolute()
+        ):
+            raise ValueError(
+                "production Whisper model_name must be an absolute local model directory"
             )
         return self
 
@@ -128,16 +138,13 @@ class DiarizationSettings(SettingsModel):
             or self.backend != "pyannote"
         ):
             return self
-        missing = [
-            field_name
-            for field_name in (
-                "model_revision",
-                "model_artifact_hash",
-                "backend_version",
-                "local_model_path",
-            )
-            if getattr(self, field_name) is None
-        ]
+        pinned_fields = (
+            ("model_revision", self.model_revision),
+            ("model_artifact_hash", self.model_artifact_hash),
+            ("backend_version", self.backend_version),
+            ("local_model_path", self.local_model_path),
+        )
+        missing = [name for name, value in pinned_fields if value is None]
         if missing:
             raise ValueError(
                 "production pyannote preprocessing requires pinned "
@@ -180,17 +187,14 @@ class OcrBackendSettings(SettingsModel):
                 "classifier, and recognizer artifacts cannot all be bound "
                 "to the single configured model_artifact_path"
             )
-        missing = [
-            field_name
-            for field_name in (
-                "backend_version",
-                "model_id",
-                "model_revision",
-                "model_artifact_hash",
-                "model_artifact_path",
-            )
-            if getattr(self, field_name) is None
-        ]
+        pinned_fields = (
+            ("backend_version", self.backend_version),
+            ("model_id", self.model_id),
+            ("model_revision", self.model_revision),
+            ("model_artifact_hash", self.model_artifact_hash),
+            ("model_artifact_path", self.model_artifact_path),
+        )
+        missing = [name for name, value in pinned_fields if value is None]
         if missing:
             raise ValueError(
                 "production OCR preprocessing requires pinned "
