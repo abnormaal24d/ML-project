@@ -39,6 +39,7 @@ venv/
 /runtime/
 /data/
 /artifacts/
+/evaluation/
 .release-staging*/
 .orchestration_cleanup_backup_*/
 .fix_backup_*/
