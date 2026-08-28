@@ -8,19 +8,12 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 import torch
 
-from config.multimodal.training_settings import (
-    IMPLEMENTED_TRAINING_BACKENDS,
-    SUPPORTED_TRAINING_BACKENDS,
-)
 from mmcrawler_datasets.collation.tensor_ops import IGNORE_LABEL
 from mmcrawler_datasets.dataloader import build_dataloader
 from mmcrawler_datasets.schema import DatasetSplit
 from multimodal.model.contracts import CollatedBatch, LOGICAL_TO_PHYSICAL_MODALITIES
 from multimodal.model.initialization import initialize_model_from_scratch
-from multimodal.tasks.registry import (
-    get_task,
-    task_requires_causal_decoder,
-)
+from multimodal.tasks.registry import get_task, task_requires_causal_decoder
 from training.losses.objective import SupervisedOrSelfSupervisedLoss
 from training.runtime.checkpoint.service import (
     resolve_resume_lineage,
@@ -75,40 +68,15 @@ def prepare_training_backend(
     *,
     training_settings: TrainingSettings,
 ) -> PreparedTrainingBackend:
-    """Resolve and validate the configured training backend.
+    """Resolve runtime requirements for the validated training backend."""
 
-    Only implemented backends pass; future backends fail fast at startup
-    until their runtime pieces land in a later milestone.
-    """
-
-    backend = training_settings.training_backend
-    if backend not in SUPPORTED_TRAINING_BACKENDS:
-        raise ValueError(
-            "unsupported training_backend: "
-            f"{backend!r}. Supported values are "
-            f"{sorted(SUPPORTED_TRAINING_BACKENDS)!r}."
-        )
-    if backend not in IMPLEMENTED_TRAINING_BACKENDS:
-        raise ValueError(
-            "training_backend is not implemented in this release: "
-            f"{backend!r}. Implemented backends are "
-            f"{sorted(IMPLEMENTED_TRAINING_BACKENDS)!r}."
-        )
-    requirements = {
-        "pipeline_smoke": PreparedTrainingBackend(
-            name="pipeline_smoke",
-            requires_distributed_runtime=False,
-            requires_gpu=False,
-            requires_dense_sequence_targets=False,
-        ),
+    return {
+        "pipeline_smoke": PreparedTrainingBackend(name="pipeline_smoke"),
         "dense_transformer": PreparedTrainingBackend(
             name="dense_transformer",
-            requires_distributed_runtime=False,
-            requires_gpu=False,
             requires_dense_sequence_targets=True,
         ),
-    }[backend]
-    return requirements
+    }[training_settings.training_backend]
 
 
 def validate_dense_training_configuration(
@@ -189,7 +157,6 @@ def dense_batch_requires_causal_targets(*, batch: CollatedBatch) -> bool:
 
     if batch.task_types:
         return any(task_requires_causal_decoder(name) for name in batch.task_types)
-
     labels = batch.decoder_labels
     return bool(
         labels is not None
@@ -227,7 +194,6 @@ def validate_dense_decoder_batch(*, batch: CollatedBatch) -> None:
         if batch.task_types
         else list(range(input_ids.shape[0]))
     )
-
     if not required_rows:
         return
     if max(required_rows) >= input_ids.shape[0]:
@@ -344,20 +310,14 @@ def prepare_training_runtime(
         device=device,
         distributed_context=distributed_context,
     )
-    signal_tracker = TrainingSignalTracker(
-        model=model,
-        modalities=modalities,
-    )
+    signal_tracker = TrainingSignalTracker(model=model, modalities=modalities)
     training_plan = build_training_scale_plan(
         dataset_size=sample_count,
         settings=training_settings,
         model_settings=model_settings,
         device=device,
     )
-    logger.info(
-        "multimodal_training_scale_plan",
-        **training_plan.to_dict(),
-    )
+    logger.info("multimodal_training_scale_plan", **training_plan.to_dict())
     optimizer = optimizer_factory(model, training_settings)
     grad_scaler = build_grad_scaler(precision_runtime)
     completed_optimizer_steps = resume_optimizer_steps(settings=training_settings)
