@@ -1,7 +1,7 @@
 """Load and validate the canonical settings tree for orchestration.
 
 ``config.load`` owns source selection, merging, path resolution, and
-structural/config-owned validation.  This module is the single orchestration
+structural/config-owned validation. This module is the single orchestration
 seam that adds runtime domain preflight checks before settings reach an
 entrypoint or composition root.
 """
@@ -75,10 +75,7 @@ def _validate_release_contract(settings: Settings) -> None:
         enabled_tasks=settings.training.tasks,
         active_release_stage=settings.training.release_stage,
     )
-    validate_release_task_contracts(
-        settings,
-        requirements,
-    )
+    validate_release_task_contracts(settings, requirements)
 
 
 def _settings_error(error: BaseException) -> SettingsLoadError:
@@ -92,9 +89,7 @@ def _settings_error(error: BaseException) -> SettingsLoadError:
         if error.issue is not None:
             context["issue"] = error.issue
     error_class = (
-        SettingsValidationError
-        if isinstance(error, ValueError)
-        else SettingsLoadError
+        SettingsValidationError if isinstance(error, ValueError) else SettingsLoadError
     )
     return error_class(
         str(error) or "runtime settings could not be loaded",
@@ -112,14 +107,10 @@ def load(
     environment: str | None = None,
     profile: str | None = None,
     overrides: Sequence[str] | None = None,
-    use_cuda: bool | None = None,
 ) -> Settings:
     """Load settings and apply all orchestration-owned startup validation."""
 
     selected_config_root = _selected_config_root(config_root)
-    effective_overrides = list(overrides or ())
-    if use_cuda:
-        effective_overrides.append("training.device=cuda")
 
     try:
         settings = load_settings(
@@ -127,7 +118,7 @@ def load(
             project_root=project_root,
             config_root=selected_config_root,
             environment=environment,
-            overrides=effective_overrides,
+            overrides=overrides,
         )
     except (
         ConfigError,
@@ -263,8 +254,7 @@ def _validate_required_local_artifacts(*, settings: Settings) -> None:
     processors = settings.collection.processors
     transcription = settings.preprocessing.transcription
     if transcription.enabled and (
-        processors.audio.run_transcription
-        or processors.video.run_transcription
+        processors.audio.run_transcription or processors.video.run_transcription
     ):
         from preprocessing.media.adapters.whisper_model_loader import (
             installed_backend_version,
