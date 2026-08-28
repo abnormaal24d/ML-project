@@ -8,27 +8,11 @@ from typing import Literal, TypeVar
 from pydantic import Field, field_validator, model_validator
 
 from config.base.settings_model import SettingsModel
-from config.environment.default_values import (
-    DEFAULT_AUDIO_MASK_PROBABILITY,
-    DEFAULT_IMAGE_MASK_PROBABILITY,
-    DEFAULT_LOSS_WEIGHTS,
-    DEFAULT_MLM_PROBABILITY,
-    DEFAULT_RAW_TEXT_MAX_TOKENS,
-)
 from schemas.multimodal_tasks import canonical_task_name
 
 _TaskMapValue = TypeVar("_TaskMapValue", int, float)
 
 SUPPORTED_TRAINING_BACKENDS: frozenset[str] = frozenset(
-    {
-        "pipeline_smoke",
-        "dense_transformer",
-        "distributed_transformer",
-        "mixture_of_experts",
-    }
-)
-
-IMPLEMENTED_TRAINING_BACKENDS: frozenset[str] = frozenset(
     {"pipeline_smoke", "dense_transformer"}
 )
 
@@ -59,12 +43,9 @@ class TrainingSettings(SettingsModel):
         "candidate",
         "production_model",
     ] = "pipeline_smoke"
-    training_backend: Literal[
-        "pipeline_smoke",
-        "dense_transformer",
-        "distributed_transformer",
-        "mixture_of_experts",
-    ] = "pipeline_smoke"
+    training_backend: Literal["pipeline_smoke", "dense_transformer"] = (
+        "pipeline_smoke"
+    )
     training_stage: Literal[
         "DATASET_FREEZE",
         "TOKENIZER_BUILD",
@@ -84,10 +65,7 @@ class TrainingSettings(SettingsModel):
     safety_loss_weight: float = Field(default=1.0, ge=0.0)
     text_tokenizer_backend: Literal["subword"] = "subword"
     text_tokenizer_name: str = "repo_subword"
-    text_tokenizer_max_tokens: int = Field(
-        default=DEFAULT_RAW_TEXT_MAX_TOKENS,
-        gt=0,
-    )
+    text_tokenizer_max_tokens: int = Field(default=128, gt=0)
     text_tokenizer_path: str = "artifacts/tokenizer/tokenizer.json"
     text_tokenizer_sha256: str | None = None
     text_tokenizer_artifact_version: str = "byte_bpe_v2"
@@ -103,9 +81,7 @@ class TrainingSettings(SettingsModel):
     approved_beta_tasks: tuple[str, ...] = ()
     sensitive_task_approvals: tuple[str, ...] = ()
     task_sampling_weights: dict[str, float] = Field(default_factory=dict)
-    task_family_sampling_weights: dict[str, float] = Field(
-        default_factory=dict
-    )
+    task_family_sampling_weights: dict[str, float] = Field(default_factory=dict)
     min_task_samples: dict[str, int] = Field(default_factory=dict)
     disable_undercovered_tasks: bool = True
     drop_samples_with_invalid_targets: bool = True
@@ -160,51 +136,21 @@ class TrainingSettings(SettingsModel):
     offline: bool = True
 
     min_alignment_score: float = Field(default=0.3, ge=0.0, le=1.0)
-    alignment_loss_power: float = Field(
-        default=DEFAULT_LOSS_WEIGHTS.alignment_loss_power,
-        ge=0.0,
-    )
-    mlm_probability: float = Field(
-        default=DEFAULT_MLM_PROBABILITY,
-        ge=0.0,
-        le=1.0,
-    )
+    alignment_loss_power: float = Field(default=1.0, ge=0.0)
+    mlm_probability: float = Field(default=0.15, ge=0.0, le=1.0)
     mlm_loss_weight: float = Field(default=0.25, ge=0.0)
     language_modeling_loss_weight: float = Field(default=0.25, ge=0.0)
-    ocr_sequence_loss_weight: float = Field(
-        default=DEFAULT_LOSS_WEIGHTS.disabled_auxiliary_loss_weight,
-        ge=0.0,
-    )
-    audio_token_loss_weight: float = Field(
-        default=DEFAULT_LOSS_WEIGHTS.disabled_auxiliary_loss_weight,
-        ge=0.0,
-    )
-    image_generation_loss_weight: float = Field(
-        default=DEFAULT_LOSS_WEIGHTS.disabled_auxiliary_loss_weight,
-        ge=0.0,
-    )
-    video_generation_loss_weight: float = Field(
-        default=DEFAULT_LOSS_WEIGHTS.disabled_auxiliary_loss_weight,
-        ge=0.0,
-    )
-    image_mask_probability: float = Field(
-        default=DEFAULT_IMAGE_MASK_PROBABILITY,
-        ge=0.0,
-        le=1.0,
-    )
+    ocr_sequence_loss_weight: float = Field(default=0.0, ge=0.0)
+    audio_token_loss_weight: float = Field(default=0.0, ge=0.0)
+    image_generation_loss_weight: float = Field(default=0.0, ge=0.0)
+    video_generation_loss_weight: float = Field(default=0.0, ge=0.0)
+    image_mask_probability: float = Field(default=0.2, ge=0.0, le=1.0)
     image_patch_loss_weight: float = Field(default=0.0, ge=0.0)
-    audio_mask_probability: float = Field(
-        default=DEFAULT_AUDIO_MASK_PROBABILITY,
-        ge=0.0,
-        le=1.0,
-    )
+    audio_mask_probability: float = Field(default=0.15, ge=0.0, le=1.0)
     audio_masked_loss_weight: float = Field(default=0.0, ge=0.0)
     video_temporal_loss_weight: float = Field(default=0.0, ge=0.0)
     hard_negative_loss_weight: float = Field(default=0.0, ge=0.0)
-    hard_negative_margin: float = Field(
-        default=DEFAULT_LOSS_WEIGHTS.hard_negative_margin,
-        ge=0.0,
-    )
+    hard_negative_margin: float = Field(default=0.2, ge=0.0)
     use_hard_negative_sampler: bool = False
 
     @field_validator(
@@ -263,10 +209,7 @@ class TrainingSettings(SettingsModel):
             )
         return {str(token): int(token_id) for token, token_id in value.items()}
 
-    @field_validator(
-        "task_sampling_weights",
-        "min_task_samples",
-    )
+    @field_validator("task_sampling_weights", "min_task_samples")
     @classmethod
     def _normalize_task_keyed_maps(
         cls,
@@ -285,10 +228,7 @@ class TrainingSettings(SettingsModel):
 
     @model_validator(mode="after")
     def _validate_worker_settings(self) -> TrainingSettings:
-        if (
-            self.release_stage in {"candidate", "production_model"}
-            and not self.offline
-        ):
+        if self.release_stage in {"candidate", "production_model"} and not self.offline:
             raise ValueError(f"{self.release_stage} requires offline=true")
         if (
             self.release_stage == "production_model"
@@ -298,7 +238,6 @@ class TrainingSettings(SettingsModel):
                 "production_model cannot use training_backend='pipeline_smoke'"
             )
         self._validate_worker_count()
-        self._validate_gpu_worker_schema()
         if self.min_learning_rate > self.learning_rate:
             raise ValueError("min_learning_rate must not exceed learning_rate")
         enabled = {canonical_task_name(task) for task in self.tasks}
@@ -334,11 +273,11 @@ class TrainingSettings(SettingsModel):
                 "curriculum_schedule contains tasks not in tasks: "
                 f"{curriculum_extras}"
             )
-
         return self
 
     def _validate_worker_count(self) -> None:
         """Dataloader / CPU worker count and prefetch/persistent rules."""
+
         if self.num_workers == 0:
             if self.prefetch_factor is not None:
                 raise ValueError(
@@ -349,14 +288,7 @@ class TrainingSettings(SettingsModel):
                     "persistent_workers must be false when num_workers=0"
                 )
         elif self.prefetch_factor is None:
-            raise ValueError(
-                "prefetch_factor must be set when num_workers > 0"
-            )
-
-    def _validate_gpu_worker_schema(self) -> None:
-        """GPU + worker interaction checks (kept in same file)."""
-        if self.device == "cuda" and self.num_workers < 0:
-            raise ValueError("num_workers must be >= 0 even when using CUDA")
+            raise ValueError("prefetch_factor must be set when num_workers > 0")
 
     def effective_min_task_samples(self) -> dict[str, int]:
         """Return task minima that can apply to the active task set."""
@@ -367,7 +299,6 @@ class TrainingSettings(SettingsModel):
                 canonical_task_name(task_name): int(minimum)
                 for task_name, minimum in self.min_task_samples.items()
             }
-
         return {
             canonical_task_name(task_name): int(minimum)
             for task_name, minimum in self.min_task_samples.items()
