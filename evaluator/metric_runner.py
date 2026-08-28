@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from contextlib import AbstractContextManager
-from typing import Any, Callable, Mapping
+from typing import Any
 
 import torch
 
@@ -13,16 +14,17 @@ from evaluator.metric_contracts import (
     RuntimeObserver,
 )
 from multimodal.model.contracts import CollatedBatch
+from multimodal.model.model import MultimodalModel
+from multimodal.tokenization.text import VocabularyTokenizer
 
 
 def _prepare_task_metric_batch(
     *,
-    batch: Any,
-    device: Any,
+    batch: CollatedBatch,
+    device: torch.device | None,
 ) -> CollatedBatch:
     """Validate the task-metric batch contract and move its tensors."""
-    if not isinstance(batch, CollatedBatch):
-        raise TypeError("task metric batches must be CollatedBatch instances")
+
     if not batch.sample_ids:
         raise ValueError("task metric batches must not be empty")
     batch_size = len(batch.sample_ids)
@@ -31,21 +33,18 @@ def _prepare_task_metric_batch(
             "task_types must align with sample_ids: "
             f"{len(batch.task_types)} != {batch_size}"
         )
-    for field_name in (
-        "text_mlm_targets",
-        "decoder_labels",
-        "layout_box_targets",
-        "document_mask",
-        "image_mask",
-        "audio_mask",
-        "video_mask",
-    ):
-        value = getattr(batch, field_name)
-        if (
-            torch.is_tensor(value)
-            and value.ndim > 0
-            and value.shape[0] != batch_size
-        ):
+
+    tensor_rows = (
+        ("text_mlm_targets", batch.text_mlm_targets),
+        ("decoder_labels", batch.decoder_labels),
+        ("layout_box_targets", batch.layout_box_targets),
+        ("document_mask", batch.document_mask),
+        ("image_mask", batch.image_mask),
+        ("audio_mask", batch.audio_mask),
+        ("video_mask", batch.video_mask),
+    )
+    for field_name, value in tensor_rows:
+        if value is not None and value.ndim > 0 and value.shape[0] != batch_size:
             raise ValueError(
                 f"{field_name} rows must match the batch: "
                 f"{value.shape[0]} != {batch_size}"
@@ -60,10 +59,11 @@ def _prepare_task_metric_batch(
 
 def _evaluate_task_metric_model(
     *,
-    model: Any,
+    model: MultimodalModel,
     batch: CollatedBatch,
 ) -> Mapping[str, Any]:
     """Run the model once and enforce the mapping output contract."""
+
     outputs = model(batch)
     if not isinstance(outputs, Mapping):
         raise TypeError("model outputs must be a mapping of metric tensors")
@@ -83,17 +83,14 @@ def _evaluation_methods_for_batch(batch: CollatedBatch) -> set[str]:
 
 def _run_evaluation(
     *,
-    model: Any,
-    loader: Any,
-    device: Any,
+    model: MultimodalModel,
+    loader: Iterable[CollatedBatch],
+    device: torch.device | None,
     autocast_factory: Callable[[], AbstractContextManager[object]],
-    tokenizer: Any,
+    tokenizer: VocabularyTokenizer | None,
     evaluation_plans: Mapping[str, EvaluationPlan] | None,
     runtime_observer: RuntimeObserver | None,
 ) -> tuple[dict[str, dict[str, float]], float | None, float | None]:
-    if loader is None:
-        raise RuntimeError("evaluation loader is required")
-
     if evaluation_plans is None:
         from evaluator.metric_registry import EVALUATION_METHODS
 
@@ -112,9 +109,9 @@ def _run_evaluation(
 
     try:
         with torch.no_grad(), autocast_factory():
-            for raw_batch in loader:
-                batch = _prepare_task_metric_batch(
-                    batch=raw_batch,
+            for batch in loader:
+                prepared_batch = _prepare_task_metric_batch(
+                    batch=batch,
                     device=device,
                 )
                 if runtime_observer is not None:
@@ -122,7 +119,7 @@ def _run_evaluation(
 
                 outputs = _evaluate_task_metric_model(
                     model=model,
-                    batch=batch,
+                    batch=prepared_batch,
                 )
 
                 if runtime_observer is not None:
@@ -138,7 +135,7 @@ def _run_evaluation(
                     ):
                         peak_memory_mb = observed_memory_mb
 
-                needed_methods = _evaluation_methods_for_batch(batch)
+                needed_methods = _evaluation_methods_for_batch(prepared_batch)
                 unsupported_methods = needed_methods - evaluation_plans.keys()
                 if unsupported_methods:
                     raise ValueError(
@@ -152,7 +149,7 @@ def _run_evaluation(
                         continue
                     plan.scorer.accumulate(
                         state=state,
-                        batch=batch,
+                        batch=prepared_batch,
                         outputs=outputs,
                         tokenizer=tokenizer,
                         model=model,
@@ -174,15 +171,16 @@ def _run_evaluation(
 
 def evaluate(
     *,
-    model: Any,
-    loader: Any,
-    device: Any,
+    model: MultimodalModel,
+    loader: Iterable[CollatedBatch],
+    device: torch.device | None,
     autocast_factory: Callable[[], AbstractContextManager[object]],
-    tokenizer: Any = None,
+    tokenizer: VocabularyTokenizer | None = None,
     evaluation_plans: Mapping[str, EvaluationPlan] | None = None,
     runtime_observer: RuntimeObserver | None = None,
 ) -> dict[str, dict[str, float]]:
     """Compute per-task metrics over one complete evaluation split."""
+
     metrics, _, _ = _run_evaluation(
         model=model,
         loader=loader,
@@ -197,14 +195,15 @@ def evaluate(
 
 def evaluate_with_runtime(
     *,
-    model: Any,
-    loader: Any,
-    device: Any,
+    model: MultimodalModel,
+    loader: Iterable[CollatedBatch],
+    device: torch.device | None,
     autocast_factory: Callable[[], AbstractContextManager[object]],
-    tokenizer: Any = None,
+    tokenizer: VocabularyTokenizer | None = None,
     evaluation_plans: Mapping[str, EvaluationPlan] | None = None,
 ) -> tuple[dict[str, dict[str, float]], float | None, float | None]:
     """Compute task metrics plus observed latency and peak memory."""
+
     from evaluator.runtime_metrics import (
         _peak_memory_mb,
         create_runtime_observer,
