@@ -178,38 +178,6 @@ def _resolve_profile_paths(
     )
 
 
-def _precheck_production_transcription(
-    raw: dict[str, Any], *, profile: Profile
-) -> None:
-    if profile != "prod":
-        return
-    preprocessing = raw.get("preprocessing", {})
-    transcription = (
-        preprocessing.get("transcription", {})
-        if isinstance(preprocessing, dict)
-        else {}
-    )
-    if not isinstance(transcription, dict) or not transcription.get("enabled"):
-        return
-    missing = [
-        name
-        for name in (
-            "model_name",
-            "model_revision",
-            "model_artifact_hash",
-            "backend_version",
-        )
-        if transcription.get(name) in (None, "")
-    ]
-    if missing:
-        raise ConfigError(
-            "production Whisper transcription requires deployment pins, "
-            f"missing: {', '.join(missing)}",
-            setting="preprocessing.transcription",
-            issue="required_deployment_pins_missing",
-        )
-
-
 def _fingerprint(settings: Settings) -> str:
     payload = json.dumps(
         settings.model_dump(mode="json", exclude={"meta"}),
@@ -264,16 +232,12 @@ def load_settings(
     overrides_env.update(overrides_from_cli(overrides or ()))
     apply_overrides(raw, overrides_env)
 
-    # Resolve filesystem identity before constructing subsystems that may have
-    # stricter production validators.  This preserves the fail-closed rule that
-    # production must name its writable workspace explicitly.
     _resolve_profile_paths(
         raw,
         profile=resolved_profile,
         env=env,
         project_root=project_root,
     )
-    _precheck_production_transcription(raw, profile=resolved_profile)
 
     settings = Settings(profile=resolved_profile, **raw)
     _validate_loaded_settings(settings)
