@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-from config.settings.logging import EventRateLimitRulesSettings
+from config.settings.logging import EventRateLimitRulesSettings, LoggingSettings
 from config.validation.cross_section import basic as basic_validators
 from crawler.storage.datasets.writing.dataset_run_finalizer import (
     DatasetRunFinalizer,
@@ -16,10 +16,6 @@ from mmcrawler_datasets.record_components import parsing as record_parsing
 from mmcrawler_datasets.training_samples import models as sample_models
 from mmcrawler_datasets.training_samples.artifact_path import (
     ValidatedArtifactPath,
-)
-from orchestration.bootstrap.logging import (
-    DEFAULT_EVENT_RATE_LIMIT_GOVERNANCE,
-    merge_default_event_governance,
 )
 from preprocessing.media.speech import prosody_contracts
 from preprocessing.media.speech.prosody_contracts import (
@@ -73,17 +69,24 @@ def test_prosody_contracts_are_directly_importable() -> None:
     assert ProsodyStatus.AVAILABLE.value == "available"
 
 
-def test_logging_defaults_are_declarative_and_overridable() -> None:
+def test_logging_defaults_are_owned_by_logging_settings() -> None:
+    defaults = LoggingSettings()
     override = EventRateLimitRulesSettings(
         min_interval_sec=11.0,
         field_names=("component_path", "host"),
     )
+    configured = defaults.model_copy(
+        update={
+            "event_rate_limit_governance": {
+                **defaults.event_rate_limit_governance,
+                "rate_limiter_sleep": override,
+            }
+        }
+    )
 
-    merged = merge_default_event_governance({"rate_limiter_sleep": override})
-
-    assert len(DEFAULT_EVENT_RATE_LIMIT_GOVERNANCE) == 18
-    assert merged["rate_limiter_sleep"] is override
-    assert "autoscaler_tick" in merged
+    assert len(defaults.event_rate_limit_governance) == 18
+    assert configured.event_rate_limit_governance["rate_limiter_sleep"] is override
+    assert "autoscaler_tick" in configured.event_rate_limit_governance
 
 
 class _RecordIndex:
