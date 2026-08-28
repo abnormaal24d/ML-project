@@ -1,64 +1,30 @@
-"""Classification detector settings: full parity with the legacy models.
-
-Full port of ``config/classification/`` (MIME detectors, encoding/language
-detection, content categories, relevance scoring and MIME-to-kind
-resolution).
-"""
+"""Classification detector settings."""
 
 from __future__ import annotations
 
 from pydantic import Field
 
 from config.base.settings_model import SettingsModel
-from config.environment.default_values import (
-    DEFAULT_CONTENT_RELEVANCE_ROUNDING_DIGITS,
-    DEFAULT_TEXT_SAMPLE_BYTES,
-)
+
+
+_DEFAULT_TEXT_SAMPLE_BYTES = 4096
+_DEFAULT_CONTENT_RELEVANCE_ROUNDING_DIGITS = 3
 
 
 def _default_stopwords_by_language() -> dict[str, tuple[str, ...]]:
     return {
-        "en": (
-            "the",
-            "and",
-            "of",
-            "to",
-            "in",
-            "for",
-            "with",
-            "on",
-        ),
-        "nl": (
-            "de",
-            "het",
-            "een",
-            "en",
-            "van",
-            "voor",
-            "met",
-            "op",
-        ),
-        "fr": (
-            "le",
-            "la",
-            "les",
-            "et",
-            "de",
-            "des",
-            "pour",
-            "avec",
-        ),
+        "en": ("the", "and", "of", "to", "in", "for", "with", "on"),
+        "nl": ("de", "het", "een", "en", "van", "voor", "met", "op"),
+        "fr": ("le", "la", "les", "et", "de", "des", "pour", "avec"),
     }
 
 
 class ContentCategoryDetectorSettings(SettingsModel):
     enabled: bool = True
-
     classify_documents: bool = True
     classify_images: bool = True
     classify_audio: bool = True
     classify_video: bool = True
-
     default_category: str = "other"
     academic_url_markers: tuple[str, ...] = (
         "arxiv.org",
@@ -67,11 +33,7 @@ class ContentCategoryDetectorSettings(SettingsModel):
         "research",
         "paper",
     )
-    news_url_markers: tuple[str, ...] = (
-        "/news/",
-        "news.",
-        "press-release",
-    )
+    news_url_markers: tuple[str, ...] = ("/news/", "news.", "press-release")
     media_kinds: tuple[str, ...] = ("image", "audio", "video")
     media_page_url_markers: tuple[str, ...] = (
         "/gallery",
@@ -105,21 +67,18 @@ class ContentCategoryDetectorSettings(SettingsModel):
         "application/rss+xml",
         "application/atom+xml",
     )
-    snippet_bytes: int = Field(default=DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
+    snippet_bytes: int = Field(default=_DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
     documentation_score: float = Field(default=0.9, ge=0.0, le=1.0)
     academic_score: float = Field(default=0.85, ge=0.0, le=1.0)
     news_score: float = Field(default=0.8, ge=0.0, le=1.0)
     media_score: float = Field(default=0.75, ge=0.0, le=1.0)
     boilerplate_score: float = Field(default=0.7, ge=0.0, le=1.0)
-
     minimum_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class ContentRelevanceScorerSettings(SettingsModel):
     enabled: bool = True
-
     minimum_score: float = Field(default=0.25, ge=0.0, le=1.0)
-
     normalize_scores: bool = True
     base_score: float = Field(default=0.45, ge=0.0, le=1.0)
     page_bonus: float = 0.1
@@ -132,18 +91,16 @@ class ContentRelevanceScorerSettings(SettingsModel):
     large_payload_threshold_bytes: int = Field(default=50_000, ge=0)
     large_payload_bonus: float = 0.1
     rounding_digits: int = Field(
-        default=DEFAULT_CONTENT_RELEVANCE_ROUNDING_DIGITS,
+        default=_DEFAULT_CONTENT_RELEVANCE_ROUNDING_DIGITS,
         ge=0,
     )
 
 
 class ContentTypeDetectorSettings(SettingsModel):
     enabled: bool = True
-
     detect_from_headers: bool = True
     detect_from_extension: bool = True
     detect_from_signature: bool = True
-
     fallback_content_type: str = "application/octet-stream"
     generic_header_mime_types: tuple[str, ...] = (
         "application/octet-stream",
@@ -169,28 +126,19 @@ class ContentTypeDetectorSettings(SettingsModel):
 
 class EncodingDetectorSettings(SettingsModel):
     enabled: bool = True
-
     default_encoding: str = "utf-8"
-
     detect_bom: bool = True
     fallback_to_utf8: bool = True
-
-    allowed_encodings: tuple[str, ...] = (
-        "utf-8",
-        "utf-16",
-        "latin-1",
-    )
+    allowed_encodings: tuple[str, ...] = ("utf-8", "utf-16", "latin-1")
     charset_pattern: str = r"charset=([a-zA-Z0-9_\-]+)"
-    sample_size_bytes: int = Field(default=DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
+    sample_size_bytes: int = Field(default=_DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
     fallback_encoding: str = "utf-8"
 
 
 class LanguageHeuristicSettings(SettingsModel):
     enabled: bool = True
-
     use_stopword_matching: bool = True
     use_unicode_ranges: bool = True
-
     min_text_length: int = Field(default=20, ge=1)
     min_best_score: int = Field(default=2, ge=1)
     require_clear_winner: bool = True
@@ -201,13 +149,10 @@ class LanguageHeuristicSettings(SettingsModel):
 
 class LanguageDetectorSettings(SettingsModel):
     enabled: bool = True
-
     minimum_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
-
     fallback_language: str = "unknown"
-
     max_input_characters: int = Field(default=10000, ge=1)
-    sample_size_bytes: int = Field(default=DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
+    sample_size_bytes: int = Field(default=_DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
     language_attribute_pattern: str = (
         r"(?:lang|xml:lang)\s*=\s*[\"']([a-zA-Z-]+)[\"']"
     )
@@ -220,16 +165,16 @@ class LanguageDetectorSettings(SettingsModel):
     default_language: str = "unknown"
     use_fasttext: bool = False
     fasttext_model_path: str | None = None
-    heuristic: LanguageHeuristicSettings = LanguageHeuristicSettings()
+    heuristic: LanguageHeuristicSettings = Field(
+        default_factory=LanguageHeuristicSettings
+    )
 
 
 class MimeDetectorSettings(SettingsModel):
     enabled: bool = True
-
     trust_http_headers: bool = True
     trust_file_extensions: bool = True
     trust_file_signatures: bool = True
-
     fallback_mime_type: str = "application/octet-stream"
     prefer_python_magic: bool = False
     use_python_magic: bool = True
@@ -237,11 +182,9 @@ class MimeDetectorSettings(SettingsModel):
 
 class MimeSignatureDetectorSettings(SettingsModel):
     enabled: bool = True
-
     scan_binary_headers: bool = True
-
     maximum_signature_size: int = Field(default=8192, ge=1)
-    sample_size_bytes: int = Field(default=DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
+    sample_size_bytes: int = Field(default=_DEFAULT_TEXT_SAMPLE_BYTES, ge=1)
     use_filetype: bool = True
 
 
@@ -274,21 +217,13 @@ def _default_exact_kind_map() -> dict[str, str]:
 
 
 def _default_prefix_kind_map() -> dict[str, str]:
-    return {
-        "image/": "image",
-        "audio/": "audio",
-        "video/": "video",
-    }
+    return {"image/": "image", "audio/": "audio", "video/": "video"}
 
 
 class ContentKindResolverSettings(SettingsModel):
     fallback_kind: str = Field(default="page", min_length=1)
-    exact_kind_map: dict[str, str] = Field(
-        default_factory=_default_exact_kind_map,
-    )
-    prefix_kind_map: dict[str, str] = Field(
-        default_factory=_default_prefix_kind_map,
-    )
+    exact_kind_map: dict[str, str] = Field(default_factory=_default_exact_kind_map)
+    prefix_kind_map: dict[str, str] = Field(default_factory=_default_prefix_kind_map)
     document_mime_types: tuple[str, ...] = (
         "application/pdf",
         "application/msword",
@@ -315,19 +250,25 @@ class ContentKindResolverSettings(SettingsModel):
 
 
 class ClassificationSettings(SettingsModel):
-    mime_detector: MimeDetectorSettings = MimeDetectorSettings()
-    mime_signature_detector: MimeSignatureDetectorSettings = (
-        MimeSignatureDetectorSettings()
+    mime_detector: MimeDetectorSettings = Field(default_factory=MimeDetectorSettings)
+    mime_signature_detector: MimeSignatureDetectorSettings = Field(
+        default_factory=MimeSignatureDetectorSettings
     )
-    mime_type_resolver: ContentTypeDetectorSettings = (
-        ContentTypeDetectorSettings()
+    mime_type_resolver: ContentTypeDetectorSettings = Field(
+        default_factory=ContentTypeDetectorSettings
     )
-    encoding_detector: EncodingDetectorSettings = EncodingDetectorSettings()
-    language_detector: LanguageDetectorSettings = LanguageDetectorSettings()
-    content_category_detector: ContentCategoryDetectorSettings = (
-        ContentCategoryDetectorSettings()
+    encoding_detector: EncodingDetectorSettings = Field(
+        default_factory=EncodingDetectorSettings
     )
-    content_relevance_scorer: ContentRelevanceScorerSettings = (
-        ContentRelevanceScorerSettings()
+    language_detector: LanguageDetectorSettings = Field(
+        default_factory=LanguageDetectorSettings
     )
-    kind_resolver: ContentKindResolverSettings = ContentKindResolverSettings()
+    content_category_detector: ContentCategoryDetectorSettings = Field(
+        default_factory=ContentCategoryDetectorSettings
+    )
+    content_relevance_scorer: ContentRelevanceScorerSettings = Field(
+        default_factory=ContentRelevanceScorerSettings
+    )
+    kind_resolver: ContentKindResolverSettings = Field(
+        default_factory=ContentKindResolverSettings
+    )
