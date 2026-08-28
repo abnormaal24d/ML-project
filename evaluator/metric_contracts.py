@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Mapping, Protocol
+from typing import TYPE_CHECKING, Mapping, Protocol
 
+import torch
 from torch import Tensor
 
 if TYPE_CHECKING:
     from multimodal.model.contracts import CollatedBatch
+    from multimodal.model.model import MultimodalModel
     from multimodal.tokenization.text import VocabularyTokenizer
 
 
@@ -34,7 +36,7 @@ class MetricStrategy(Protocol):
         batch: CollatedBatch,
         outputs: Mapping[str, Tensor],
         tokenizer: VocabularyTokenizer | None,
-        model: Any,
+        model: MultimodalModel,
     ) -> None:
         """Accumulate metrics for one batch."""
 
@@ -42,7 +44,7 @@ class MetricStrategy(Protocol):
         self,
         *,
         state: EvaluationState,
-        device: Any,
+        device: torch.device | None,
     ) -> None:
         """Synchronize state across DDP ranks."""
 
@@ -100,12 +102,8 @@ class EvaluationState:
     """Mutable state accumulated during evaluation."""
 
     pair_text_embeddings: dict[str, list[Tensor]] = field(default_factory=dict)
-    pair_media_embeddings: dict[str, list[Tensor]] = field(
-        default_factory=dict
-    )
-    sequence_statistics: dict[str, SequenceStatistics] = field(
-        default_factory=dict
-    )
+    pair_media_embeddings: dict[str, list[Tensor]] = field(default_factory=dict)
+    sequence_statistics: dict[str, SequenceStatistics] = field(default_factory=dict)
     mlm_state: MLMState = field(default_factory=MLMState)
     causal_lm_state: CausalLMState = field(default_factory=CausalLMState)
 
@@ -113,13 +111,13 @@ class EvaluationState:
 class RuntimeObserver(Protocol):
     """Optional runtime metrics observer."""
 
-    def reset(self, *, device: Any) -> None: ...
+    def reset(self, *, device: torch.device | None) -> None: ...
 
-    def start_batch(self, *, device: Any) -> None: ...
+    def start_batch(self, *, device: torch.device | None) -> None: ...
 
-    def end_batch(self, *, device: Any) -> float: ...
+    def end_batch(self, *, device: torch.device | None) -> float: ...
 
-    def peak_memory_mb(self, *, device: Any) -> float | None: ...
+    def peak_memory_mb(self, *, device: torch.device | None) -> float | None: ...
 
 
 @dataclass(slots=True)
