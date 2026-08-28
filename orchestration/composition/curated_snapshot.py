@@ -26,26 +26,20 @@ from crawler.curation.snapshots.dataset_assembly.curated_record_loader import (
 from crawler.curation.snapshots.dataset_assembly.curated_snapshot_fingerprint import (
     build_snapshot_fingerprint_payload,
 )
-from crawler.curation.snapshots.deduplication import (
-    CuratedSnapshotDeduplicator,
-)
+from crawler.curation.snapshots.deduplication import CuratedSnapshotDeduplicator
 from crawler.curation.snapshots.manifest import CuratedSnapshotManifest
 from crawler.governance.domains.domain_governance_registry import (
     DomainGovernanceRegistry,
 )
 from crawler.governance.domains.host_normalizer import HostNormalizer
-from crawler.storage.datasets.run_layout.dataset_path_layout import (
-    snapshot_directory,
-)
+from crawler.storage.datasets.run_layout.dataset_path_layout import snapshot_directory
 from logger.project_logger import ProjectLogger
+from mmcrawler_datasets.assembly.text_chunk_splitter import TextChunkSplitter
 from mmcrawler_datasets.schema import SplitAssigner
 from orchestration.composition.curated_snapshot_services import (
     dataset_writer_factory,
     document_curator_factory,
     raw_manifest_reader_settings,
-)
-from orchestration.composition.dataset_dependencies import (
-    build_text_chunk_splitter,
 )
 from orchestration.composition.preprocessing_dependencies import (
     build_multimodal_preprocessor,
@@ -58,12 +52,7 @@ if TYPE_CHECKING:
         RawManifestReaderSettings,
         SplitAssignerSettings,
     )
-    from mmcrawler_datasets.assembly.text_chunk_splitter import (
-        TextChunkSplitter,
-    )
-    from orchestration.workflow.curated_snapshot_runtime import (
-        CuratedSnapshotRuntime,
-    )
+    from orchestration.workflow.curated_snapshot_runtime import CuratedSnapshotRuntime
     from preprocessing.multimodal_preprocessor import MultimodalPreprocessor
 
 
@@ -85,12 +74,10 @@ class _ConcreteCuratedSnapshotAssemblerFactory:
         minimum_modality_counts: Mapping[str, int],
         snapshot_id_factory: partial[str],
         document_curator: curated_assembly_types.DocumentCuratorFactory,
-        preprocessing_input_builder: (
-            curated_assembly_types.PreprocessingInputBuilder
-        ),
+        preprocessing_input_builder: curated_assembly_types.PreprocessingInputBuilder,
         preprocessing_phase_runner: "MultimodalPreprocessor",
         writer_factory: curated_assembly_types.DatasetWriterFactory,
-        chunker: "TextChunkSplitter",
+        chunker: TextChunkSplitter,
     ) -> None:
         self._config = config
         self._logger = logger
@@ -125,9 +112,7 @@ class _ConcreteCuratedSnapshotAssemblerFactory:
                     project_root=self._project_root,
                     logger=self._logger,
                     dataset_paths=self._dataset_paths,
-                    minimum_modality_counts=dict(
-                        self._minimum_modality_counts
-                    ),
+                    minimum_modality_counts=dict(self._minimum_modality_counts),
                 ),
                 snapshot_id_factory=self._snapshot_id_factory,
                 snapshot_directory_resolver=snapshot_directory,
@@ -172,8 +157,8 @@ def build_curated_snapshot_assembler_factory(
         clock=clock,
         id_generator=id_generator,
     )
-    chunk_splitter = build_text_chunk_splitter(
-        settings=settings,
+    chunk_splitter = TextChunkSplitter(
+        settings=settings.datasets.curation.document_chunker,
         assign_split=split_assigner.assign,
         logger=logger,
     )
@@ -194,7 +179,7 @@ def build_curated_snapshot_assembler_factory(
         logger=logger,
         dataset_paths=settings.datasets.paths,
         project_root=settings.paths.root,
-        configured_raw_manifest_reader=(settings.datasets.raw.manifest_reader),
+        configured_raw_manifest_reader=settings.datasets.raw.manifest_reader,
         minimum_modality_counts={
             "page": settings.crawl_output_gate.minimum_records.page,
             "image": settings.crawl_output_gate.minimum_records.image,
@@ -208,18 +193,16 @@ def build_curated_snapshot_assembler_factory(
             id_generator=id_generator,
         ),
         document_curator=document_curator_factory(
-            document_curator_settings=(curation_settings.document_assembler),
+            document_curator_settings=curation_settings.document_assembler,
             near_deduper_settings=curation_settings.near_deduper,
-            artifacts_directory=(settings.datasets.paths.artifacts_directory),
+            artifacts_directory=settings.datasets.paths.artifacts_directory,
             source_registry=source_registry,
             logger=logger,
             clock=clock,
         ),
         preprocessing_input_builder=partial(
             build_preprocessing_inputs,
-            max_input_bytes=(
-                settings.preprocessing.input_validation.max_input_bytes
-            ),
+            max_input_bytes=settings.preprocessing.input_validation.max_input_bytes,
         ),
         preprocessing_phase_runner=multimodal_preprocessor,
         writer_factory=dataset_writer_factory(
@@ -239,13 +222,11 @@ def build_curated_snapshot_runtime(
 ) -> CuratedSnapshotRuntime:
     """Wire the workflow curated-snapshot runtime for one settings tree."""
 
-    from orchestration.workflow.curated_snapshot_runtime import (
-        CuratedSnapshotRuntime,
-    )
+    from orchestration.workflow.curated_snapshot_runtime import CuratedSnapshotRuntime
 
     processors = settings.collection.processors
     profile_log_fields = {
-        "dataset_subdirectory": (settings.datasets.paths.output_subdirectory),
+        "dataset_subdirectory": settings.datasets.paths.output_subdirectory,
         "image_ocr": processors.image.run_ocr,
         "audio_transcription": processors.audio.run_transcription,
         "video_transcription": processors.video.run_transcription,
@@ -271,9 +252,7 @@ def _snapshot_id(*, clock: Clock, id_generator: IdGenerator) -> str:
     return f"{timestamp}-{id_generator.generate()}"
 
 
-def _split_assigner(
-    *, split_settings: "SplitAssignerSettings"
-) -> SplitAssigner:
+def _split_assigner(*, split_settings: "SplitAssignerSettings") -> SplitAssigner:
     return SplitAssigner(
         train_ratio=split_settings.train_ratio,
         val_ratio=split_settings.val_ratio,
