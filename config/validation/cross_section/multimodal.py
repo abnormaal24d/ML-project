@@ -5,11 +5,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 
-from config.environment.source_selection import PRODUCTION_ENVIRONMENTS
-from schemas.multimodal_tasks import (
-    canonical_task_mapping,
-    canonical_task_names,
-)
+from schemas.multimodal_tasks import canonical_task_mapping, canonical_task_names
 
 if TYPE_CHECKING:
     from config.settings.root import Settings
@@ -98,46 +94,3 @@ def _validate_generation_loss_backends(settings: Settings) -> None:
                 "multimodal.training.video_generation_loss_weight > 0 "
                 "requires multimodal.model.video_decoder.enabled=true"
             )
-
-
-def _validate_dataset_validator_task_alignment(
-    settings: Settings,
-) -> None:
-    """Align dataset task minima with enabled training configuration tasks."""
-
-    training = settings.training
-    validator = settings.datasets.training.dataset_validator
-
-    enabled_tasks = canonical_task_names(
-        training.tasks,
-        field_name="multimodal.training.tasks",
-    )
-    validator_minimums = canonical_task_mapping(
-        validator.effective_min_task_samples(),
-        field_name=(
-            "datasets.training.dataset_validator.effective_min_task_samples"
-        ),
-    )
-
-    inactive_minimums = sorted(
-        task_name
-        for task_name, minimum in validator_minimums.items()
-        if int(minimum) > 0 and task_name not in enabled_tasks
-    )
-    if inactive_minimums:
-        raise ValueError(
-            "datasets.training.dataset_validator task minima contain "
-            "positive values for disabled tasks: "
-            f"{inactive_minimums}"
-        )
-
-    if settings.application.environment not in PRODUCTION_ENVIRONMENTS:
-        return
-
-    missing_minimums = sorted(enabled_tasks - set(validator_minimums))
-    if missing_minimums:
-        raise ValueError(
-            "datasets.training.dataset_validator must define an explicit "
-            "task minimum for every enabled production task: "
-            f"{missing_minimums}"
-        )
