@@ -15,23 +15,8 @@ if TYPE_CHECKING:
 _SPLIT_TOTAL_TOLERANCE = 1e-6
 
 
-def _validate_worker_limits(
-    settings: Settings,
-) -> None:
-    """Validate collection worker limits."""
-
-    max_workers = settings.collection.autoscaler.max_workers
-
-    if max_workers <= 0:
-        raise ValueError(
-            "collection.autoscaler.max_workers must be greater than zero"
-        )
-
-
-def _validate_dataset_splits(
-    settings: Settings,
-) -> None:
-    """Validate curation and training split ratios."""
+def _validate_dataset_splits(settings: Settings) -> None:
+    """Validate the relational invariant for dataset split ratios."""
 
     split_settings = (
         ("curation", settings.datasets.splits.curation),
@@ -46,9 +31,7 @@ def _validate_dataset_splits(
         )
 
         if not all(math.isfinite(value) for value in ratios):
-            raise ValueError(
-                f"{split_name} split ratios must be finite numbers"
-            )
+            raise ValueError(f"{split_name} split ratios must be finite numbers")
 
         if any(value < 0.0 or value > 1.0 for value in ratios):
             raise ValueError(
@@ -64,46 +47,10 @@ def _validate_dataset_splits(
             raise ValueError(f"{split_name} split ratios must sum to 1.0")
 
 
-def _validate_timeouts(
-    settings: Settings,
-) -> None:
-    """Validate HTTP timeout settings."""
-
-    request_timeout = (
-        settings.collection.http_rules.timeouts.request_timeout_seconds
-    )
-
-    if request_timeout <= 0:
-        raise ValueError(
-            "collection.http_rules.timeouts.request_timeout_seconds "
-            "must be greater than zero"
-        )
-
-
-def _validate_rate_limits(
-    settings: Settings,
-) -> None:
-    """Validate canonical collection pacing settings."""
-
-    default_rps = settings.collection.pacing.default_rps
-
-    if default_rps <= 0:
-        raise ValueError(
-            "collection.pacing.default_rps must be greater than zero"
-        )
-
-
-def _validate_coverage(
-    settings: Settings,
-) -> None:
+def _validate_coverage(settings: Settings) -> None:
     """Delegate coverage consistency validation to its owning module."""
 
-    messages = tuple(
-        validate_coverage_settings_consistency(
-            settings=settings,
-        )
-    )
-
+    messages = tuple(validate_coverage_settings_consistency(settings=settings))
     if messages:
         raise ValueError(
             "coverage settings are inconsistent: "
