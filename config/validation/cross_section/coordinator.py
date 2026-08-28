@@ -11,7 +11,6 @@ from config.validation.cross_section.basic import (
 from config.validation.cross_section.collection import _validate_media_limits
 from config.validation.cross_section.composition import validate_composition_config
 from config.validation.cross_section.multimodal import (
-    _validate_dataset_validator_task_alignment,
     _validate_generation_loss_backends,
     _validate_multimodal_training_configuration_shape,
 )
@@ -36,7 +35,6 @@ def validate_structural_settings(settings: Settings) -> None:
     _validate_media_limits(settings)
     _validate_multimodal_training_configuration_shape(settings)
     _validate_generation_loss_backends(settings)
-    _validate_dataset_validator_task_alignment(settings)
     _validate_preprocessing_configuration(settings)
     _validate_video_transcription_flags(settings)
     _validate_release_stage(settings)
