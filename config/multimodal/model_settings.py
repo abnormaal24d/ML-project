@@ -2,17 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import Literal
 
 from pydantic import Field, model_validator
 
 from config.base.settings_model import SettingsModel
-from config.environment.default_values import (
-    DEFAULT_AUDIO_FEATURE_DIM,
-    DEFAULT_IMAGE_FEATURE_DIM,
-    DEFAULT_TEXT_FEATURE_DIM,
-    DEFAULT_VIDEO_FEATURE_DIM,
-)
 from config.multimodal.encoder_settings import EncoderSettings
 from config.multimodal.fusion_settings import FusionSettings
 from config.multimodal.generation_settings import (
@@ -45,35 +39,25 @@ class ModelSettings(
     model_family: ModelFamily = "multimodal_model"
 
     text: EncoderSettings = Field(
-        default_factory=lambda: EncoderSettings(
-            input_dim=DEFAULT_TEXT_FEATURE_DIM
-        )
+        default_factory=lambda: EncoderSettings(input_dim=512)
     )
     image: EncoderSettings = Field(
-        default_factory=lambda: EncoderSettings(
-            input_dim=DEFAULT_IMAGE_FEATURE_DIM
-        )
+        default_factory=lambda: EncoderSettings(input_dim=512)
     )
     audio: EncoderSettings = Field(
-        default_factory=lambda: EncoderSettings(
-            input_dim=DEFAULT_AUDIO_FEATURE_DIM
-        )
+        default_factory=lambda: EncoderSettings(input_dim=256)
     )
     document: EncoderSettings = Field(
-        default_factory=lambda: EncoderSettings(
-            input_dim=DEFAULT_TEXT_FEATURE_DIM
-        )
+        default_factory=lambda: EncoderSettings(input_dim=512)
     )
     video: EncoderSettings = Field(
-        default_factory=lambda: EncoderSettings(
-            input_dim=DEFAULT_VIDEO_FEATURE_DIM
-        )
+        default_factory=lambda: EncoderSettings(input_dim=512)
     )
     image_codec: "ImageCodecSettings" = Field(
-        default_factory=lambda: ImageCodecSettings()
+        default_factory=ImageCodecSettings
     )
     audio_codec: "AudioCodecSettings" = Field(
-        default_factory=lambda: AudioCodecSettings()
+        default_factory=AudioCodecSettings
     )
 
     @property
@@ -88,8 +72,15 @@ class ModelSettings(
 
     @model_validator(mode="after")
     def _validate_single_model_schema(self) -> ModelSettings:
+        encoders = {
+            "text": self.text,
+            "document": self.document,
+            "image": self.image,
+            "audio": self.audio,
+            "video": self.video,
+        }
         output_dimensions = {
-            cast("EncoderSettings", getattr(self, modality)).output_dim
+            encoders[modality].output_dim
             for modality in self.enabled_modalities
         }
         if len(output_dimensions) != 1:
