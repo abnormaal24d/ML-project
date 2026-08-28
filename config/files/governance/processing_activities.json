@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "activities": [
+    {
+      "activity_id": "training_dataset_build",
+      "purpose": "Build governed multimodal training datasets",
+      "personal_data_allowed": false,
+      "dpia_status": "approved",
+      "dpia_review_expires_at": "2027-07-23T00:00:00Z",
+      "retention_days": 365,
+      "rules_version": "1.0.0",
+      "enabled": true
+    }
+  ]
+}

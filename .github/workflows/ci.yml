@@ -1,0 +1,577 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality-and-tests:
+    runs-on: ${{ matrix.os }}
+    # A test-level timeout cannot terminate a native/plugin hang that occurs
+    # after pytest has reported its final result. Keep a job-wide watchdog.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - run: >
+          python -m pip install ".[dev]"
+          -c requirements/constraints-py312-cpu.txt
+          -c requirements/constraints-py312-preprocessing.txt
+          --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip check
+      - run: >
+          python -c "import torch, torchaudio;
+          from pyannote.audio import Pipeline;
+          assert torch.__version__.split('+', 1)[0] ==
+          torchaudio.__version__.split('+', 1)[0]"
+      - run: python -m compileall -q -j 0 .
+      - run: ruff check --no-cache .
+      - run: ruff format --check .
+      - run: >
+          python -m vulture
+          augmentation config crawler datachecker evaluator logger
+          mmcrawler_datasets multimodal orchestration preprocessing release
+          schemas shared training
+          --min-confidence 90
+      - name: Canonical non-incremental type check
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m mypy . --no-incremental --config-file pyproject.toml 2>&1 | tee typecheck-diagnostics.txt
+      - name: Bind type-check diagnostics to the checked-out source
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import importlib.metadata
+          import json
+          import platform
+          import subprocess
+          from pathlib import Path
+
+          root = Path(".")
+          source_files = sorted(
+              path
+              for path in root.rglob("*.py")
+              if not any(
+                  part in {".git", ".mypy_cache", ".venv", "__pycache__"}
+                  for part in path.parts
+              )
+          )
+          source_digest = hashlib.sha256()
+          for path in source_files:
+              source_digest.update(path.as_posix().encode("utf-8"))
+              source_digest.update(b"\0")
+              source_digest.update(path.read_bytes())
+              source_digest.update(b"\0")
+          lock_files = sorted(Path("requirements").glob("lock-*.txt"))
+          lock_digest = hashlib.sha256()
+          for path in lock_files:
+              lock_digest.update(path.name.encode("utf-8"))
+              lock_digest.update(b"\0")
+              lock_digest.update(path.read_bytes())
+              lock_digest.update(b"\0")
+          diagnostics = Path("typecheck-diagnostics.txt")
+          payload = {
+              "commit_sha": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], text=True
+              ).strip(),
+              "source_tree_sha256": source_digest.hexdigest(),
+              "lockfiles_sha256": lock_digest.hexdigest(),
+              "diagnostics_sha256": hashlib.sha256(
+                  diagnostics.read_bytes()
+              ).hexdigest(),
+              "python_version": platform.python_version(),
+              "mypy_version": importlib.metadata.version("mypy"),
+              "command": (
+                  "python -m mypy . --no-incremental "
+                  "--config-file pyproject.toml"
+              ),
+              "typecheck_outcome": "${{ steps.typecheck.outcome }}",
+          }
+          Path("typecheck-provenance.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: typecheck-diagnostics
+          path: |
+            typecheck-diagnostics.txt
+            typecheck-provenance.json
+      - name: Enforce canonical type-check result
+        if: steps.typecheck.outcome != 'success'
+        run: exit 1
+      - name: Workflow routing and real dense CPU training golden path
+        run: >
+          pytest -q
+          tests/e2e/test_workflow_golden_path.py
+          tests/training/test_training_runtime_smoke.py
+      - run: >
+          pytest -q
+          --cov=augmentation
+          --cov=config
+          --cov=crawler
+          --cov=datachecker
+          --cov=evaluator
+          --cov=logger
+          --cov=mmcrawler_datasets
+          --cov=multimodal
+          --cov=orchestration
+          --cov=preprocessing
+          --cov=release
+          --cov=shared
+          --cov=training
+          --cov-report=term-missing
+          --cov-report=xml:coverage.xml
+          --cov-fail-under=50
+      - name: Enforce critical package coverage floors
+        shell: bash
+        run: |
+          coverage json -o coverage.json
+          python - <<'PY'
+          import json
+          from collections import defaultdict
+
+          floors = {
+              "crawler": 0.40,
+              "datachecker": 0.45,
+              "orchestration": 0.40,
+              "release": 0.80,
+              "evaluator": 0.80,
+          }
+          promotion_rollback_modules = (
+              "model_release_publisher",
+              "release_staging",
+              "current_release_pointer",
+              "release_manifest",
+              "release_directory_validation",
+          )
+          promotion_floor = 0.85
+          payload = json.loads(
+              open("coverage.json", encoding="utf-8").read()
+          )
+          totals = defaultdict(lambda: [0, 0])
+          for filename, file_data in payload["files"].items():
+              package = filename.split("/", 1)[0]
+              summary = file_data["summary"]
+              totals[package][0] += int(summary["covered_lines"])
+              totals[package][1] += int(summary["num_statements"])
+
+          failures = []
+          for package, floor in floors.items():
+              covered, statements = totals.get(package, (0, 0))
+              if statements <= 0:
+                  failures.append(f"{package}: missing from coverage data")
+                  continue
+              rate = covered / statements
+              if rate < floor:
+                  failures.append(
+                      f"{package}: {rate:.1%} below required {floor:.1%}"
+                  )
+
+          promotion_totals = [0, 0]
+          for filename, file_data in payload["files"].items():
+              summary = file_data["summary"]
+              if any(
+                  filename.split("/")[-1] == f"{module}.py"
+                  for module in promotion_rollback_modules
+              ):
+                  promotion_totals[0] += int(summary["covered_lines"])
+                  promotion_totals[1] += int(summary["num_statements"])
+          promotion_rate = (
+              promotion_totals[0] / promotion_totals[1]
+              if promotion_totals[1] > 0
+              else 0.0
+          )
+          if promotion_rate < promotion_floor:
+              failures.append(
+                  "promotion/rollback: "
+                  f"{promotion_rate:.1%} below required {promotion_floor:.1%}"
+              )
+          if failures:
+              raise SystemExit("; ".join(failures))
+          PY
+      - run: python -m orchestration.main --help
+      - run: python -m orchestration.main run --help
+      - run: python -m orchestration.main control --help
+      - run: multimodal-crawler --help
+      - run: python -m pip wheel . --no-deps --no-build-isolation -w dist-check
+
+  infra-suite:
+    needs: quality-and-tests
+    runs-on: ubuntu-latest
+    env:
+      RUN_INFRA_SUITE: "1"
+      CONTAINER_IMAGE_TAG: "multimodal-crawler-ci"
+      E2E_TARGET: "offline"
+      REQUIREMENTS_LOCK: "requirements/lock-py312-training-linux.txt"
+      FLAGGED_DEPENDENCIES: ""
+      LOAD_WINDOW_SECONDS: "30"
+      LOAD_ITERATIONS: "200"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: >
+          python -m pip install ".[dev]"
+          -c requirements/constraints-py312-cpu.txt
+          -c requirements/constraints-py312-preprocessing.txt
+          --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: pytest -q tests/test_strategy_infra_dependent.py
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - run: >
+          python -m pip install ".[dev]"
+          -c requirements/constraints-py312-cpu.txt
+          -c requirements/constraints-py312-preprocessing.txt
+          --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip_audit --strict -r requirements/constraints-py312-cpu.txt
+      - run: python -m pip_audit --strict -r requirements/constraints-py312-preprocessing.txt
+      - run: python -m bandit -q -ll -r augmentation config crawler datachecker evaluator logger mmcrawler_datasets multimodal orchestration preprocessing release shared training
+      - run: pip-licenses --fail-on="GNU Affero General Public License v3;GNU General Public License v3"
+      - name: Install pinned Trivy
+        run: |
+          curl -fsSLo /tmp/trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz
+          echo "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea  /tmp/trivy.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+      - run: trivy fs --scanners vuln,secret,misconfig --exit-code 1 --severity HIGH,CRITICAL .
+
+  supply-chain-gate:
+    needs:
+      - quality-and-tests
+      - security
+      - dependency-audit
+      - lock-integrity
+      - docker-training-cpu
+      - docker-training-gpu
+      - docker-preprocessing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-sbom*"
+          merge-multiple: true
+      - name: Verify supply-chain gate inputs are present and valid
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          required = {
+              "training-cpu-image-sbom.json",
+              "training-gpu-image-sbom.json",
+              "preprocessing-image-sbom.json",
+              "training-sbom.json",
+              "preprocessing-sbom.json",
+          }
+          present = {path.name for path in Path(".").glob("*")}
+          missing = sorted(required - present)
+          if missing:
+              raise SystemExit(
+                  "supply-chain gate missing SBOMs: " + ", ".join(missing)
+              )
+          for name in required:
+              payload = json.loads(Path(name).read_text(encoding="utf-8"))
+              if not isinstance(payload, dict) or "components" not in payload:
+                  raise SystemExit(
+                      f"supply-chain gate SBOM is invalid: {name}"
+                  )
+          print(
+              "supply-chain gate passed: all security artifacts present "
+              "and valid"
+          )
+          PY
+
+  package:
+    needs: supply-chain-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - run: >
+          python -m pip install ".[dev]"
+          -c requirements/constraints-py312-cpu.txt
+          -c requirements/constraints-py312-preprocessing.txt
+          --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python -m build
+      - name: Verify distributions contain no runtime or hygiene artifacts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import tarfile
+          import zipfile
+          from pathlib import Path
+
+          forbidden_suffixes = {".pyc", ".pyo", ".bak", ".orig", ".rej"}
+          forbidden_parts = {"__pycache__", ".mypy_cache", ".pytest_cache"}
+          dist_files = list(Path("dist").glob("*.tar.gz")) + list(
+              Path("dist").glob("*.whl")
+          )
+          if not dist_files:
+              raise SystemExit("no distributions found in dist/")
+          for artifact in dist_files:
+              entries = []
+              if artifact.suffix == ".gz":
+                  with tarfile.open(artifact) as archive:
+                      entries = archive.getnames()
+              else:
+                  with zipfile.ZipFile(artifact) as archive:
+                      entries = archive.namelist()
+              violations = sorted(
+                  entry
+                  for entry in entries
+                  if any(entry.endswith(s) for s in forbidden_suffixes)
+                  or any(part in entry.split("/") for part in forbidden_parts)
+              )
+              if violations:
+                  raise SystemExit(
+                      f"artifact contains forbidden files: {artifact.name}: "
+                      + ", ".join(violations)
+                  )
+              print(f"artifact hygiene passed: {artifact.name}")
+          PY
+      - name: Smoke-test the installed wheel outside the source tree
+        shell: bash
+        run: |
+          python -m pip install --force-reinstall --no-deps dist/*.whl
+          cd "$RUNNER_TEMP"
+          python - <<'PY'
+          import importlib
+          import os
+          from pathlib import Path
+
+          workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          modules = (
+              "shared.media.adapters.pillow_decode",
+              "crawler.extraction.payloads.image_payload_extractor",
+              "preprocessing.multimodal_preprocessor",
+              "orchestration.composition.runtime.crawler",
+          )
+          for module_name in modules:
+              module = importlib.import_module(module_name)
+              module_path = Path(module.__file__).resolve()
+              if workspace in module_path.parents:
+                  raise AssertionError(
+                      f"{module_name} imported from source tree: {module_path}"
+                  )
+          PY
+      - uses: actions/attest-build-provenance@v1
+        if: github.event_name == 'push'
+        with:
+          subject-path: "dist/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - run: python -m pip install pip-audit==2.10.1 cyclonedx-bom==7.3.0
+      - run: python -m pip_audit --strict --disable-pip -r requirements/lock-py312-training-linux.txt
+      - run: python -m pip_audit --strict --disable-pip -r requirements/lock-py312-preprocessing-linux.txt
+      - run: python -m pip_audit --strict --disable-pip -r requirements/lock-py312-training-cu124-linux.txt
+      - run: python -m pip_audit --strict --disable-pip -r requirements/lock-py312-preprocessing-cu124-linux.txt
+      - run: cyclonedx-py requirements requirements/lock-py312-training-linux.txt -o training-sbom.json
+      - run: cyclonedx-py requirements requirements/lock-py312-preprocessing-linux.txt -o preprocessing-sbom.json
+      - uses: actions/attest-build-provenance@v1
+        if: github.event_name == 'push'
+        with:
+          subject-path: "*-sbom.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-sboms
+          path: "*-sbom.json"
+
+  lock-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+      - run: python -m venv .venv-training
+      - run: >
+          .venv-training/bin/python -m pip install --require-hashes
+          -r requirements/lock-py312-training-linux.txt
+          --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: .venv-training/bin/python -m pip install . --no-deps
+      - run: .venv-training/bin/python -m pip check
+      - run: .venv-training/bin/python -c "from mmcrawler_datasets.collation.multimodal import MultimodalCollator; from training.runtime.trainer import MultimodalTrainer; assert MultimodalCollator and MultimodalTrainer"
+      - run: python -m venv .venv-preprocessing
+      - run: >
+          .venv-preprocessing/bin/python -m pip install --require-hashes
+          -r requirements/lock-py312-preprocessing-linux.txt
+          --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: .venv-preprocessing/bin/python -m pip install . --no-deps
+      - run: .venv-preprocessing/bin/python -m pip check
+      - run: .venv-preprocessing/bin/python -c "import cv2, faster_whisper, soundfile; from preprocessing.multimodal_preprocessor import MultimodalPreprocessor; assert MultimodalPreprocessor"
+
+  docker-training-cpu:
+    needs: quality-and-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target training -t multimodal-crawler-cpu -f docker/Dockerfile.cpu .
+      - run: docker run --rm --entrypoint python multimodal-crawler-cpu -c "from mmcrawler_datasets.collation.multimodal import MultimodalCollator; from mmcrawler_datasets.dataloader import build_dataloader; from shared.media.adapters.pillow_decode import open_image_with_guard; from training.runtime.trainer import MultimodalTrainer; assert MultimodalCollator and build_dataloader and MultimodalTrainer and callable(open_image_with_guard)"
+      - run: docker run --rm -e DATA_ENGINE_ENVIRONMENT=dev multimodal-crawler-cpu control status
+      - name: Verify container healthcheck reports healthy
+        run: |
+          docker run -d --name healthcheck-cpu --entrypoint sleep multimodal-crawler-cpu infinity
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' healthcheck-cpu)
+            if [ "$status" = "healthy" ]; then
+              echo "container is healthy"
+              docker rm -f healthcheck-cpu
+              exit 0
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              docker logs healthcheck-cpu
+              docker rm -f healthcheck-cpu
+              echo "container is unhealthy"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs healthcheck-cpu
+          docker rm -f healthcheck-cpu
+          echo "healthcheck did not become healthy in time"
+          exit 1
+      - name: Install pinned Trivy
+        run: |
+          curl -fsSLo /tmp/trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz
+          echo "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea  /tmp/trivy.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+      - run: trivy image --exit-code 1 --severity HIGH,CRITICAL multimodal-crawler-cpu
+      - run: trivy image --format cyclonedx --output training-cpu-image-sbom.json multimodal-crawler-cpu
+      - run: docker save --output training-cpu-image.tar multimodal-crawler-cpu
+      - uses: actions/attest-build-provenance@v1
+        if: github.event_name == 'push'
+        with:
+          subject-path: "training-cpu-image.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: training-cpu-image-sbom
+          path: training-cpu-image-sbom.json
+
+  docker-training-gpu:
+    needs: quality-and-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target training -t multimodal-crawler-gpu -f docker/Dockerfile.gpu .
+      - run: docker run --rm --entrypoint python multimodal-crawler-gpu -c "import torch; from mmcrawler_datasets.collation.multimodal import MultimodalCollator; from mmcrawler_datasets.dataloader import build_dataloader; from shared.media.adapters.pillow_decode import open_image_with_guard; from training.runtime.trainer import MultimodalTrainer; assert MultimodalCollator and build_dataloader and MultimodalTrainer and callable(open_image_with_guard) and torch.version.cuda == '12.4'"
+      - run: docker run --rm -e DATA_ENGINE_ENVIRONMENT=dev multimodal-crawler-gpu control status
+      - name: Install pinned Trivy
+        run: |
+          curl -fsSLo /tmp/trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz
+          echo "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea  /tmp/trivy.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+      - run: trivy image --exit-code 1 --severity HIGH,CRITICAL multimodal-crawler-gpu
+      - run: trivy image --format cyclonedx --output training-gpu-image-sbom.json multimodal-crawler-gpu
+      - run: docker save --output training-gpu-image.tar multimodal-crawler-gpu
+      - uses: actions/attest-build-provenance@v1
+        if: github.event_name == 'push'
+        with:
+          subject-path: "training-gpu-image.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: training-gpu-image-sbom
+          path: training-gpu-image-sbom.json
+
+  docker-preprocessing:
+    needs: quality-and-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target preprocessing -t multimodal-crawler-preprocessing -f docker/Dockerfile.cpu .
+      - run: docker run --rm --entrypoint python multimodal-crawler-preprocessing -c "import shutil; import cv2; import soundfile; import faster_whisper; assert all(shutil.which(name) for name in ('ffmpeg','pdftotext','tesseract'))"
+      - run: docker run --rm -e DATA_ENGINE_ENVIRONMENT=dev multimodal-crawler-preprocessing control status
+      - name: Verify container healthcheck reports healthy
+        run: |
+          docker run -d --name healthcheck-preprocessing --entrypoint sleep multimodal-crawler-preprocessing infinity
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' healthcheck-preprocessing)
+            if [ "$status" = "healthy" ]; then
+              echo "container is healthy"
+              docker rm -f healthcheck-preprocessing
+              exit 0
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              docker logs healthcheck-preprocessing
+              docker rm -f healthcheck-preprocessing
+              echo "container is unhealthy"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs healthcheck-preprocessing
+          docker rm -f healthcheck-preprocessing
+          echo "healthcheck did not become healthy in time"
+          exit 1
+      - name: Install pinned Trivy
+        run: |
+          curl -fsSLo /tmp/trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz
+          echo "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea  /tmp/trivy.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+      - run: trivy image --exit-code 1 --severity HIGH,CRITICAL multimodal-crawler-preprocessing
+      - run: trivy image --format cyclonedx --output preprocessing-image-sbom.json multimodal-crawler-preprocessing
+      - run: docker save --output preprocessing-image.tar multimodal-crawler-preprocessing
+      - uses: actions/attest-build-provenance@v1
+        if: github.event_name == 'push'
+        with:
+          subject-path: "preprocessing-image.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preprocessing-image-sbom
+          path: preprocessing-image-sbom.json

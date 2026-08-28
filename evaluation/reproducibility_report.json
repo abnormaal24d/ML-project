@@ -1,0 +1,50 @@
+{
+  "dataset_manifest_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "experiment_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "kind": "reproducibility_report",
+  "metrics": {},
+  "passed": false,
+  "release_requirements_id": "fixture-policy",
+  "release_requirements_sha256": "2f36826289397aa4232d8fd558a0ca042cfe881e0761497a017cfe9eaaf9ce20",
+  "reproducibility_deterministic_required": true,
+  "reproducibility_metric_tolerances": {
+    "validation_loss": 0.03
+  },
+  "required_seeds": [
+    42,
+    43,
+    44
+  ],
+  "run_ids": [
+    "attempt-4",
+    "attempt-5",
+    "attempt-6"
+  ],
+  "run_receipts": [
+    {
+      "run_id": "attempt-4",
+      "seed": 42,
+      "sha256": "65e9c7cecf1e8949fb72b0a820f6a76aed33044e27285571756cbf3181703eac"
+    },
+    {
+      "run_id": "attempt-5",
+      "seed": 42,
+      "sha256": "fd4603d1d4e14a05f0fcd4aa190377ea7860a8ffcd6b694cca66472cc08f8692"
+    },
+    {
+      "run_id": "attempt-6",
+      "seed": 42,
+      "sha256": "fe8324bbe6461742b7d98931547dfa1d02cb99f410d373f697588474407b9096"
+    }
+  ],
+  "schema_version": "3.2",
+  "seeds": [
+    42,
+    42,
+    42
+  ],
+  "violations": [
+    "duplicate_seed_receipt:42",
+    "required_seeds_missing"
+  ]
+}

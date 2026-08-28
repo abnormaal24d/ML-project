@@ -1,0 +1,78 @@
+# Python caches and local tooling
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+_pytest*/
+.mypy_cache/
+.ruff_cache/
+.codex-*/
+.nox/
+.tox/
+
+# Build and packaging outputs
+build/
+dist/
+dist-check/
+dist-clean/
+*.egg-info/
+*.egg
+.eggs/
+*.zip
+*.zip.sha256
+
+# Editors, operating systems, and environments
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.venv/
+.venv312/
+venv/
+.venv-release/
+
+# Generated runtime state and user data: never source-release content
+/runtime/
+/data/
+/artifacts/
+.release-staging*/
+.orchestration_cleanup_backup_*/
+.fix_backup_*/
+*.bak
+*.backup
+*.orig
+*.rej
+
+# Media, model, and binary artifacts
+*.jsonl
+*.mp4
+*.mp3
+*.pdf
+*.pt
+*.pth
+*.ckpt
+*.pt.d/
+*.pt.distributed.d/
+*.onnx
+*.safetensors
+*.sqlite
+*.sqlite3
+*.log
+*.tmp
+
+# Secrets and local locks
+config/files/env/.env
+!config/files/env/.env.example
+requirements.lock
+constraints.txt
+*.local.lock
+*.lock
+package-lock.json
+pip-audit-report.json
+
+# Production constraints are source inputs.
+!requirements/constraints-*.txt

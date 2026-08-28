@@ -1,0 +1,354 @@
+# Dev profile: interactive, unfrozen, mirrors the legacy dev environment
+# (public_science_small sources, tiny Whisper, rapidocr, default training).
+profile = "dev"
+
+[logging]
+console_level = "INFO"
+level = "INFO"
+enable_file = true
+file_path = "runtime/logs/dev_document_only.log"
+format = "json"
+
+[crawler]
+enabled = true
+
+[crawl_output_gate]
+min_quality_score = 0.45
+min_raw_objects_total = 80
+min_successful_requests_total = 60
+
+[crawl_output_gate.minimum_records]
+page = 1
+document = 15
+image = 20
+audio = 5
+video = 5
+
+[coverage.targets]
+min_missing_to_crawl = 1
+task_targets = { document_text_pair = 15, image_text_pair = 20, audio_text_pair = 5, video_text_pair = 5 }
+modality_targets = { document = 15, image = 20, audio = 5, video = 5 }
+
+[coverage.focus]
+enabled = true
+boost_multiplier = 12
+non_target_slots = 1
+
+[sources]
+set = "dev"
+registry = "source_registry.json"
+active_profile = "public_science_small"
+selectors = [
+    { name = "usgs", max_seeds = 12 },
+    { name = "nasa", max_seeds = 16 },
+    { name = "noaa", max_seeds = 12 },
+]
+
+# Canonical dev scheduling/autoscaling contract. Migrated from the legacy
+# config/files/environments/dev.toml: the profiles are the single runtime
+# truth, there is no fallback to the legacy environment files.
+[collection.scheduling]
+max_seen = 100000
+max_depth = 4
+max_pending_per_host = 64
+max_pending_per_host_under_pressure = 32
+max_pending_per_host_critical = 16
+max_inflight_per_host = 1
+inflight_host_wait_seconds = 2.0
+max_total_attempts = 5
+max_deferrals = 3
+max_timeouts = 1
+max_total_attempts_by_kind = {}
+max_deferrals_by_kind = {}
+max_timeouts_by_kind = {}
+timeout_retry_wait_seconds = 5.0
+dead_letter_on_drain = true
+queue_high_watermark = 300
+queue_critical_watermark = 500
+# Raised from default 64/96 to give target-focus tasks more room before
+# high-pressure throttling kicks in for dev runs.
+dynamic_crawl_budget_enabled = true
+crawl_budget_window = 200
+crawl_budget_low_info_threshold = 0.08
+max_feeds_per_host = 8
+max_feed_depth = 3
+max_document_candidate_depth = 6
+max_audio_candidate_depth = 7
+max_video_candidate_depth = 7
+max_pending_per_host_by_kind = { page = 32, image = 48, audio = 32, document = 32, video = 16 }
+max_pending_per_host_by_kind_under_pressure = { page = 12, image = 24, audio = 16, document = 16, video = 8 }
+max_pending_per_host_by_kind_critical = { page = 3, image = 8, audio = 4, document = 4, video = 2 }
+
+[collection.autoscaler]
+min_workers = 2
+max_workers = 4
+max_scale_up_step = 4
+max_scale_down_step = 2
+# Sustained-demand windows: a transient dip in runnable demand must not
+# trigger an immediate scale-down once the cooldown has elapsed.
+scale_up_delay_seconds = 0.3
+scale_down_delay_seconds = 1.5
+slow_task_seconds_threshold = 20.0
+
+[collection.processors.audio]
+run_transcription = true
+max_transcription_bytes = 120000000
+
+[collection.processors.video]
+run_transcription = true
+generate_transcriptions = true
+extract_audio_track = true
+
+[preprocessing.transcription]
+enabled = true
+backend = "whisper"
+model_name = "tiny"
+language = "en"
+device = "cpu"
+compute_type = "int8"
+batch_size = 1
+max_audio_duration_seconds = 3600
+beam_size = 1
+temperature = 0.0
+condition_on_previous_text = true
+vad_filter = true
+vad_min_silence_duration_ms = 500
+word_timestamps = false
+cache_directory = "runtime/cache/transcription"
+local_files_only = false
+production_mode = false
+
+[preprocessing.ocr]
+backend = "rapidocr"
+production_mode = false
+
+[datasets.paths]
+output_subdirectory = "multimodal"
+
+[datasets.raw.manifest_reader]
+run_selection_mode = "coverage_combined"
+
+[datasets.raw.writer]
+manifest_flush_every_records = 20
+manifest_fsync_enabled = false
+manifest_fsync_every_records = 200
+raw_sync_summary_every_records = 100
+
+[datasets.training.writer]
+write_jsonl = true
+write_shards = true
+shard_format = "webdataset_tar"
+training_shards_directory = "shards"
+shard_max_samples = 1000
+shard_index_filename = "shard_index.json"
+
+[datasets.training.dataset_validator]
+enable_quality_checks = true
+fail_on_quality_checks = true
+fail_on_smoke_trainer = true
+strict_production_acceptance = false
+workflow_profile = "crawler_dataset"
+require_allow_training = true
+require_non_empty_eval_splits = true
+require_validation_report_clean = true
+require_complete_payload = true
+require_media_objects = true
+require_autonomous_multimodal_readiness = true
+require_evaluation_metrics = true
+require_finite_losses = true
+require_supervised_metrics_when_labeled = true
+require_model_accepted_in_production = true
+min_total_samples = 1000
+min_train_samples = 300
+min_val_samples = 30
+min_test_samples = 30
+min_text_samples = 100
+min_document_samples = 15
+min_image_samples = 20
+min_audio_samples = 5
+min_video_samples = 5
+min_training_batches = 50
+max_test_train_loss_ratio = 2.5
+model_min_total_samples = 1000
+model_min_train_samples = 300
+model_min_val_samples = 30
+model_min_test_samples = 30
+model_min_training_batches = 50
+model_max_test_train_loss_ratio = 2.5
+min_active_modalities = 0
+min_alignment_coverage = 0.0
+min_evaluation_metrics = { accuracy = 0.45, macro_f1 = 0.20, retrieval_accuracy = 0.20, embedding_similarity_mean = 0.20 }
+min_task_samples = { text_pretrain = 100, document_text_pair = 50, pdf_text_pair = 0, image_text_pair = 20, audio_text_pair = 5, video_text_pair = 5, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 25, document_summarization = 25, document_comparison = 25, table_extraction = 0, vqa = 10, ocr_parse = 0, speech_transcription = 0, audio_summarization = 0, video_qa = 3, video_summarization = 3, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 0, cross_modal_consistency = 50 }
+require_all_modalities_in_train = false
+require_all_modalities_in_val = false
+require_all_modalities_in_test = false
+
+[multimodal]
+output_modalities = ["class", "embedding", "text", "json", "audio"]
+fusion_dim = 128
+projection_dim = 128
+raw_text_vocab_size = 4096
+raw_audio_num_samples = 8000
+raw_video_frames = 2
+
+[multimodal.text]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.document]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.image]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.audio]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.video]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.text_decoder]
+enabled = true
+vocab_size = 4096
+hidden_dim = 128
+num_layers = 2
+num_heads = 4
+max_target_tokens = 128
+max_context_tokens = 128
+max_text_context_tokens = 32
+max_document_context_tokens = 24
+max_image_context_tokens = 24
+max_audio_context_tokens = 24
+max_video_context_tokens = 24
+
+[multimodal.audio_tokenizer]
+enabled = true
+codec = "continuous"
+sample_rate = 16000
+frame_ms = 20
+hop_ms = 20
+codebook_size = 1024
+n_codebooks = 1
+token_dim = 128
+
+[multimodal.image_generator]
+enabled = false
+safety_filter_enabled = false
+watermark_metadata_enabled = false
+
+[multimodal.vocoder]
+enabled = true
+sample_rate = 24000
+hop_length = 320
+preserve_prosody = true
+
+[multimodal.image_codec]
+latent_channels = 8
+downsample_factor = 16
+hidden_dim = 256
+input_resolution = 64
+output_channels = 3
+upsample_blocks = 4
+
+[multimodal.generation]
+allow_tensor_artifact_fallback = false
+require_decodeable_generation_outputs = true
+max_new_tokens = 64
+temperature = 0.7
+top_p = 0.9
+top_k = 0
+beam_size = 1
+image_steps = 30
+audio_codec_rate = 50
+streaming_chunk_ms = 40
+
+[multimodal.runtime]
+profile = "dev_cpu"
+latency_target_ms = 1000
+
+[training]
+training_backend = "pipeline_smoke"
+device = "cpu"
+num_workers = 0
+batch_size = 4
+epochs = 4
+precision = "fp32"
+distributed_strategy = "none"
+gradient_accumulation_steps = 1
+learning_rate = 3e-4
+scheduler_interval = "step"
+monitor_metric = "validation_loss"
+drop_last = false
+# No audio-generation task is enabled until its discrete target contract is
+# exercised by a supported profile.
+audio_token_loss_weight = 0.0
+# Full task family with the summarization/information-extraction slice
+# present but disabled (zero minima); see disable_undercovered_tasks.
+tasks = [
+    "text_pretrain",
+    "causal_text_pretrain",
+    "summarization",
+    "information_extraction",
+    "document_text_pair",
+    "pdf_text_pair",
+    "doc_qa",
+    "document_summarization",
+    "document_comparison",
+    "table_extraction",
+    "image_text_pair",
+    "image_captioning",
+    "vqa",
+    "ocr_parse",
+    "audio_text_pair",
+    "speech_transcription",
+    "audio_summarization",
+    "video_text_pair",
+    "video_captioning",
+    "video_qa",
+    "scene_understanding",
+    "action_recognition",
+    "video_summarization",
+    "multimodal_retrieval",
+    "cross_modal_consistency",
+]
+curriculum_schedule = [
+    "text_pretrain",
+    "causal_text_pretrain",
+    "summarization",
+    "information_extraction",
+    "document_text_pair",
+    "pdf_text_pair",
+    "doc_qa",
+    "document_summarization",
+    "document_comparison",
+    "table_extraction",
+    "image_text_pair",
+    "image_captioning",
+    "vqa",
+    "ocr_parse",
+    "audio_text_pair",
+    "speech_transcription",
+    "audio_summarization",
+    "video_text_pair",
+    "video_captioning",
+    "video_qa",
+    "scene_understanding",
+    "action_recognition",
+    "video_summarization",
+    "multimodal_retrieval",
+    "cross_modal_consistency",
+]
+task_sampling_weights = { text_pretrain = 1.0, causal_text_pretrain = 2.0, summarization = 1.0, information_extraction = 0.8, document_text_pair = 1.0, pdf_text_pair = 1.0, doc_qa = 1.2, document_summarization = 1.0, document_comparison = 0.8, table_extraction = 0.8, image_text_pair = 1.0, image_captioning = 1.2, vqa = 1.2, ocr_parse = 1.2, audio_text_pair = 1.0, speech_transcription = 1.2, audio_summarization = 1.0, video_text_pair = 1.0, video_captioning = 1.2, video_qa = 1.2, scene_understanding = 1.0, action_recognition = 0.8, video_summarization = 1.0, multimodal_retrieval = 1.0, cross_modal_consistency = 0.8 }
+task_family_sampling_weights = { text = 1.5, document = 1.5, image = 1.2, audio = 1.0, video = 1.0, cross_modal = 0.8, retrieval = 0.8, multimodal_reasoning = 0.9, screen_ui = 0.5, table_spreadsheet = 0.7 }
+min_task_samples = { text_pretrain = 100, causal_text_pretrain = 100, document_text_pair = 50, pdf_text_pair = 0, image_text_pair = 20, image_captioning = 20, audio_text_pair = 5, video_text_pair = 5, video_captioning = 10, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 25, document_summarization = 25, document_comparison = 25, table_extraction = 0, vqa = 10, ocr_parse = 0, speech_transcription = 10, audio_summarization = 0, video_qa = 3, video_summarization = 3, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 0, cross_modal_consistency = 50 }
+
+[release]

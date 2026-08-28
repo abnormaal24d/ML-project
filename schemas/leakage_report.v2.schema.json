@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "coverageSide": {
+      "additionalProperties": false,
+      "properties": {
+        "eligible": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "with_evidence": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eligible",
+        "with_evidence",
+        "ratio"
+      ],
+      "type": "object"
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_id": {
+          "type": "string"
+        },
+        "lineage_key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": "string"
+        },
+        "sample_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sample_id",
+        "partition",
+        "dataset_id",
+        "lineage_key"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "coverage": {
+      "additionalProperties": {
+        "additionalProperties": false,
+        "properties": {
+          "left": {
+            "$ref": "#/$defs/coverageSide"
+          },
+          "minimum": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "right": {
+            "$ref": "#/$defs/coverageSide"
+          }
+        },
+        "required": [
+          "left",
+          "right",
+          "minimum"
+        ],
+        "type": "object"
+      },
+      "type": "object"
+    },
+    "overlaps": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "left": {
+            "$ref": "#/$defs/identity"
+          },
+          "right": {
+            "$ref": "#/$defs/identity"
+          }
+        },
+        "required": [
+          "category",
+          "left",
+          "right",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "2.0"
+    },
+    "violations": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "coverage",
+    "overlaps",
+    "violations",
+    "passed"
+  ],
+  "type": "object"
+}

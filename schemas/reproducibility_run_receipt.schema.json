@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "container_digest": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "dataset_manifest_sha256": {
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "determinism": {
+      "type": "object"
+    },
+    "experiment_sha256": {
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "hardware": {
+      "type": "object"
+    },
+    "initialization_policy_sha256": {
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "metrics": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "minProperties": 1,
+      "type": "object"
+    },
+    "model_state_sha256": {
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "resumed_from_run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "run_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "3.0"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "tokenizer_sha256": {
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "training_plan_sha256": {
+      "minLength": 1,
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "seed",
+    "dataset_manifest_sha256",
+    "experiment_sha256",
+    "model_state_sha256",
+    "container_digest",
+    "tokenizer_sha256",
+    "initialization_policy_sha256",
+    "training_plan_sha256",
+    "hardware",
+    "determinism",
+    "metrics",
+    "resumed_from_run_id"
+  ],
+  "type": "object"
+}

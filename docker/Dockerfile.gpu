@@ -1,0 +1,124 @@
+# syntax=docker/dockerfile:1.7
+
+ARG PYTHON_IMAGE=python:3.12.13-slim-bookworm@sha256:8a7e7cc04fd3e2bd787f7f24e22d5d119aa590d429b50c95dfe12b3abe52f48b
+
+FROM ${PYTHON_IMAGE} AS source
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /build
+COPY pyproject.toml README.md LICENSE MANIFEST.in ./
+COPY requirements/lock-build-tools-linux.txt requirements/lock-build-tools-linux.txt
+COPY requirements/lock-py312-preprocessing-cu124-linux.txt requirements/lock-py312-preprocessing-cu124-linux.txt
+COPY requirements/lock-py312-training-cu124-linux.txt requirements/lock-py312-training-cu124-linux.txt
+COPY augmentation augmentation
+COPY config config
+COPY crawler crawler
+COPY datachecker datachecker
+COPY evaluator evaluator
+COPY logger logger
+COPY mmcrawler_datasets mmcrawler_datasets
+COPY multimodal multimodal
+COPY orchestration orchestration
+COPY preprocessing preprocessing
+COPY schemas schemas
+COPY shared shared
+COPY training training
+COPY release release
+
+FROM source AS preprocessing-builder
+
+RUN python -m pip install --require-hashes \
+      -r requirements/lock-build-tools-linux.txt && \
+    python -m pip wheel --require-hashes \
+      -r requirements/lock-py312-preprocessing-cu124-linux.txt \
+      --extra-index-url https://download.pytorch.org/whl/cu124 \
+      --wheel-dir /wheels && \
+    python -m pip wheel . --no-deps --no-build-isolation --wheel-dir /wheels
+
+FROM source AS training-builder
+
+RUN python -m pip install --require-hashes \
+      -r requirements/lock-build-tools-linux.txt && \
+    python -m pip wheel --require-hashes \
+      -r requirements/lock-py312-training-cu124-linux.txt \
+      --extra-index-url https://download.pytorch.org/whl/cu124 \
+      --wheel-dir /wheels && \
+    python -m pip wheel . --no-deps --no-build-isolation --wheel-dir /wheels
+
+FROM ${PYTHON_IMAGE} AS gpu-runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    DATA_ENGINE_PROJECT_ROOT=/app \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility \
+    NVIDIA_VISIBLE_DEVICES=all \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates=20230311+deb12u1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 crawler \
+    && useradd --system --uid 10001 --gid crawler --home /app crawler \
+    && mkdir -p /app/runtime /app/data \
+    && chown -R crawler:crawler /app
+
+FROM gpu-runtime AS preprocessing
+
+ENV DATA_ENGINE_PROJECT_ROOT=/app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ffmpeg=7:5.1.9-0+deb12u1 \
+      libchromaprint-tools=1.5.1-2+b1 \
+      libgl1=1.6.0-1 \
+      libmagic1=1:5.44-3 \
+      libsndfile1=1.2.0-1+deb12u1 \
+      poppler-utils=22.12.0-2+deb12u2 \
+      tesseract-ocr=5.3.0-2 \
+      tesseract-ocr-eng=1:4.1.0-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=preprocessing-builder /wheels /wheels
+RUN python -m pip install \
+      --no-index --find-links=/wheels \
+      "multimodal-crawler[preprocessing-media]" \
+    && rm -rf /wheels \
+    && python -m pip check
+
+WORKDIR /app
+USER 10001:10001
+
+VOLUME ["/app/runtime", "/app/data"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import shutil; assert all(shutil.which(name) for name in ('ffmpeg','pdftotext','tesseract')); from orchestration.main import main; assert callable(main)" || exit 1
+# Deployments must provide DATA_ENGINE_ENVIRONMENT; generic images fail closed.
+ENTRYPOINT ["multimodal-crawler"]
+CMD ["run"]
+
+FROM gpu-runtime AS training
+
+ENV HF_HUB_OFFLINE=1 \
+    DATA_ENGINE_PROJECT_ROOT=/app \
+    TRANSFORMERS_OFFLINE=1
+
+COPY --from=training-builder /wheels /wheels
+RUN python -m pip install \
+      --no-index --find-links=/wheels \
+      "multimodal-crawler[training-scratch]" \
+    && rm -rf /wheels \
+    && python -m pip check \
+    && python -c "import importlib.metadata as m; import torch; forbidden={'accelerate','diffusers','faster-whisper','huggingface-hub','peft','pyannote-audio','rapidocr-onnxruntime','sentence-transformers','transformers'}; installed={d.metadata['Name'].lower().replace('_','-') for d in m.distributions()}; assert not forbidden & installed, forbidden & installed; assert torch.version.cuda == '12.4', torch.version.cuda"
+
+WORKDIR /app
+USER 10001:10001
+
+VOLUME ["/app/runtime", "/app/data"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import torch; assert torch.cuda.is_available(), 'cuda unavailable'; from orchestration.main import main; from training.runtime.trainer import MultimodalTrainer; assert callable(main) and MultimodalTrainer" || exit 1
+# Deployments must provide DATA_ENGINE_ENVIRONMENT; generic images fail closed.
+ENTRYPOINT ["multimodal-crawler"]
+CMD ["run", "--use-cuda"]

@@ -1,0 +1,490 @@
+{
+  "schema_version": "1.0",
+  "environments": {
+    "dev": {
+      "active_profile": "public_science_small"
+    },
+    "prod": {
+      "active_profile": "public_science"
+    }
+  },
+  "sources": {
+    "nasa": {
+      "description": "NASA public science publications, news, and media assets",
+      "owner": "data-engineering",
+      "status": "approved_training",
+      "reviewed_at": "2026-07-01",
+      "last_verified_at": "2026-07-01",
+      "review_expires_at": "2026-10-01",
+      "allowed_hosts": [
+        "nasa.gov",
+        "www.nasa.gov",
+        "science.nasa.gov",
+        "assets.science.nasa.gov",
+        "images-assets.nasa.gov",
+        "ntrs.nasa.gov",
+        "svs.gsfc.nasa.gov",
+        "photojournal.jpl.nasa.gov",
+        "www.youtube.com",
+        "youtube.com"
+      ],
+      "default_training_allowed": false,
+      "disallowed_patterns": [
+        "/login",
+        "/account",
+        "/user",
+        "?session=",
+        "?token="
+      ],
+      "pii_risk": "low",
+      "retention_days": 90,
+      "contact_or_rules_url": "https://www.nasa.gov/about/highlights/HP_Privacy.html",
+      "robots_rules_expected": "allowed",
+      "copyright_basis": "us-federal-public-domain-with-third-party-exceptions",
+      "allowed_asset_hosts": [
+        "assets.science.nasa.gov",
+        "images-assets.nasa.gov",
+        "ntrs.nasa.gov",
+        "svs.gsfc.nasa.gov",
+        "photojournal.jpl.nasa.gov",
+        "www.youtube.com",
+        "youtube.com"
+      ],
+      "governance": [
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "www.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "science.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "assets.science.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "images-assets.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "ntrs.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "svs.gsfc.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "photojournal.jpl.nasa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": false,
+          "allow_training": false,
+          "domain": "www.youtube.com",
+          "license": "permissive-open-license",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": false,
+          "allow_training": false,
+          "domain": "youtube.com",
+          "license": "permissive-open-license",
+          "terms_source": "source-registry"
+        }
+      ],
+      "seed_hosts": [
+        "www.nasa.gov",
+        "science.nasa.gov",
+        "ntrs.nasa.gov"
+      ],
+      "feed_alternate_urls": {
+        "https://www.nasa.gov/news-release/feed/": [
+          "https://www.nasa.gov/rss/dyn/breaking_news.rss"
+        ]
+      },
+      "explicit_media_seeds": [
+        "https://www.nasa.gov/podcasts/",
+        "https://www.nasa.gov/multimedia/"
+      ],
+      "media_feeds": [
+        "https://www.nasa.gov/rss/dyn/breaking_news.rss"
+      ],
+      "media_api_endpoints": [],
+      "seed_urls": [
+        "https://www.nasa.gov/",
+        "https://ntrs.nasa.gov/",
+        "https://www.nasa.gov/news/",
+        "https://www.nasa.gov/news-release/feed/",
+        "https://www.nasa.gov/rss/dyn/breaking_news.rss",
+        "https://www.nasa.gov/multimedia/",
+        "https://www.nasa.gov/images/",
+        "https://www.nasa.gov/podcasts/",
+        "https://www.nasa.gov/missions/",
+        "https://www.nasa.gov/science-research/",
+        "https://www.nasa.gov/technology/",
+        "https://www.nasa.gov/aeronautics/",
+        "https://www.nasa.gov/humans-in-space/",
+        "https://www.nasa.gov/earth/",
+        "https://www.nasa.gov/solar-system/",
+        "https://www.nasa.gov/universe/",
+        "https://www.nasa.gov/stem/",
+        "https://www.nasa.gov/history/",
+        "https://www.nasa.gov/general/nasa-image-and-video-library/",
+        "https://science.nasa.gov/learn/",
+        "https://www.nasa.gov/centers-and-facilities/",
+        "https://www.nasa.gov/directorates/",
+        "https://www.nasa.gov/topics/",
+        "https://science.nasa.gov/",
+        "https://science.nasa.gov/multimedia/",
+        "https://science.nasa.gov/earth/",
+        "https://science.nasa.gov/earth/news/",
+        "https://science.nasa.gov/climate-change/",
+        "https://science.nasa.gov/moon/",
+        "https://science.nasa.gov/mars/",
+        "https://science.nasa.gov/solar-system/",
+        "https://science.nasa.gov/universe/",
+        "https://science.nasa.gov/heliophysics/",
+        "https://science.nasa.gov/resource/mars-multimedia-catalog/",
+        "https://science.nasa.gov/mission/hubble/",
+        "https://science.nasa.gov/mission/webb/",
+        "https://science.nasa.gov/mission/artemis/",
+        "https://science.nasa.gov/mission/perseverance-rover/"
+      ],
+      "training_allowed_domains": [
+        "nasa.gov",
+        "www.nasa.gov",
+        "science.nasa.gov",
+        "assets.science.nasa.gov",
+        "images-assets.nasa.gov",
+        "ntrs.nasa.gov",
+        "svs.gsfc.nasa.gov",
+        "photojournal.jpl.nasa.gov"
+      ]
+    },
+    "noaa": {
+      "description": "NOAA public ocean, weather, and education content",
+      "owner": "data-engineering",
+      "status": "approved_training",
+      "reviewed_at": "2026-07-01",
+      "last_verified_at": "2026-07-01",
+      "review_expires_at": "2026-10-01",
+      "allowed_hosts": [
+        "noaa.gov",
+        "www.noaa.gov",
+        "oceanservice.noaa.gov",
+        "cdn.oceanservice.noaa.gov",
+        "oceanexplorer.noaa.gov",
+        "repository.library.noaa.gov",
+        "cdn-images.noaa.gov",
+        "coast.noaa.gov",
+        "videos.fisheries.noaa.gov"
+      ],
+      "default_training_allowed": false,
+      "disallowed_patterns": [
+        "/login",
+        "/account",
+        "/user",
+        "?session=",
+        "?token="
+      ],
+      "pii_risk": "low",
+      "retention_days": 90,
+      "contact_or_rules_url": "https://www.noaa.gov/protection-of-personal-information",
+      "robots_rules_expected": "allowed",
+      "copyright_basis": "us-federal-public-domain-with-third-party-exceptions",
+      "allowed_asset_hosts": [
+        "cdn.oceanservice.noaa.gov",
+        "repository.library.noaa.gov",
+        "cdn-images.noaa.gov",
+        "www.noaa.gov",
+        "coast.noaa.gov",
+        "videos.fisheries.noaa.gov"
+      ],
+      "governance": [
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "www.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "oceanservice.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "cdn.oceanservice.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "oceanexplorer.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "repository.library.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "cdn-images.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": true,
+          "allow_training": true,
+          "domain": "coast.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_boilerplate_image_caption": false,
+          "allow_training": true,
+          "domain": "videos.fisheries.noaa.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        }
+      ],
+      "seed_hosts": [
+        "repository.library.noaa.gov",
+        "oceanservice.noaa.gov",
+        "oceanexplorer.noaa.gov",
+        "coast.noaa.gov",
+        "videos.fisheries.noaa.gov"
+      ],
+      "seed_urls": [
+        "https://repository.library.noaa.gov/",
+        "https://oceanservice.noaa.gov/",
+        "https://oceanservice.noaa.gov/news/",
+        "https://oceanservice.noaa.gov/facts/",
+        "https://oceanservice.noaa.gov/podcast/",
+        "https://oceanservice.noaa.gov/education/",
+        "https://oceanservice.noaa.gov/hazards/",
+        "https://oceanservice.noaa.gov/navigation/",
+        "https://oceanservice.noaa.gov/observations/",
+        "https://oceanexplorer.noaa.gov/",
+        "https://oceanexplorer.noaa.gov/multimedia/",
+        "https://oceanexplorer.noaa.gov/explorations/",
+        "https://oceanservice.noaa.gov/economy/",
+        "https://oceanservice.noaa.gov/ecosystems/",
+        "https://oceanservice.noaa.gov/geodesy/",
+        "https://oceanservice.noaa.gov/rss/noaa-ocean-podcast.xml",
+        "https://oceanexplorer.noaa.gov/okeanos/",
+        "https://oceanexplorer.noaa.gov/facts/",
+        "https://oceanexplorer.noaa.gov/edu/",
+        "https://oceanexplorer.noaa.gov/news/",
+        "https://oceanexplorer.noaa.gov/gallery/"
+      ],
+      "training_allowed_domains": [
+        "noaa.gov",
+        "www.noaa.gov",
+        "oceanservice.noaa.gov",
+        "cdn.oceanservice.noaa.gov",
+        "oceanexplorer.noaa.gov",
+        "repository.library.noaa.gov",
+        "cdn-images.noaa.gov",
+        "coast.noaa.gov",
+        "videos.fisheries.noaa.gov"
+      ],
+      "explicit_media_seeds": [
+        "https://oceanexplorer.noaa.gov/multimedia/",
+        "https://coast.noaa.gov/gallery/videos/index.html",
+        "https://videos.fisheries.noaa.gov/category/videos/b-roll-packages---all"
+      ],
+      "media_feeds": [
+        "https://oceanservice.noaa.gov/rss/noaa-ocean-podcast.xml"
+      ],
+      "media_api_endpoints": []
+    },
+    "usgs": {
+      "description": "USGS publications, news, and public-domain media assets",
+      "owner": "data-engineering",
+      "status": "approved_training",
+      "reviewed_at": "2026-07-01",
+      "last_verified_at": "2026-07-01",
+      "review_expires_at": "2026-10-01",
+      "allowed_hosts": [
+        "usgs.gov",
+        "www.usgs.gov",
+        "pubs.usgs.gov",
+        "d9-wret.s3.us-west-2.amazonaws.com",
+        "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com",
+        "usgs-ocapsv2-public-output-media.s3.us-west-2.amazonaws.com",
+        "videos.usgs.gov"
+      ],
+      "default_training_allowed": false,
+      "disallowed_patterns": [
+        "/login",
+        "/account",
+        "/user",
+        "?session=",
+        "?token="
+      ],
+      "pii_risk": "low",
+      "retention_days": 90,
+      "contact_or_rules_url": "https://www.usgs.gov/privacy-rules",
+      "robots_rules_expected": "allowed",
+      "copyright_basis": "us-federal-public-domain-with-third-party-exceptions",
+      "allowed_asset_hosts": [
+        "d9-wret.s3.us-west-2.amazonaws.com",
+        "pubs.usgs.gov",
+        "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com",
+        "usgs-ocapsv2-public-output-media.s3.us-west-2.amazonaws.com",
+        "www.usgs.gov",
+        "videos.usgs.gov"
+      ],
+      "governance": [
+        {
+          "allow_training": true,
+          "domain": "usgs.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "www.usgs.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "pubs.usgs.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "usgs-ocapsv2-public-output-media.s3.us-west-2.amazonaws.com",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "d9-wret.s3.us-west-2.amazonaws.com",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "www.usgs.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        },
+        {
+          "allow_training": true,
+          "domain": "videos.usgs.gov",
+          "license": "us-federal-public-domain-with-third-party-exceptions",
+          "terms_source": "source-registry"
+        }
+      ],
+      "seed_hosts": [
+        "www.usgs.gov",
+        "pubs.usgs.gov"
+      ],
+      "seed_urls": [
+        "https://pubs.usgs.gov/",
+        "https://www.usgs.gov/products/publications",
+        "https://www.usgs.gov/publications",
+        "https://pubs.usgs.gov/sir/2026/5036/sir20265036.pdf",
+        "https://pubs.usgs.gov/publication/sir20265036",
+        "https://pubs.usgs.gov/publication/70234567",
+        "https://www.usgs.gov/",
+        "https://www.usgs.gov/news",
+        "https://www.usgs.gov/news/feed",
+        "https://www.usgs.gov/media/images",
+        "https://www.usgs.gov/products/data-and-tools",
+        "https://www.usgs.gov/programs/earthquake-hazards",
+        "https://www.usgs.gov/programs/volcano-hazards",
+        "https://www.usgs.gov/mission-areas/water-resources",
+        "https://www.usgs.gov/mission-areas/ecosystems",
+        "https://www.usgs.gov/mission-areas/energy-and-minerals",
+        "https://www.usgs.gov/mission-areas/natural-hazards",
+        "https://www.usgs.gov/mission-areas/core-science-systems",
+        "https://www.usgs.gov/faqs",
+        "https://www.usgs.gov/centers",
+        "https://www.usgs.gov/science/science-explorer",
+        "https://www.usgs.gov/educational-resources",
+        "https://www.usgs.gov/special-topics/water-science-school",
+        "https://www.usgs.gov/special-topics/earthword",
+        "https://www.usgs.gov/natural-hazards",
+        "https://www.usgs.gov/climate-adaptation-science-centers",
+        "https://www.usgs.gov/core-science-systems/national-geospatial-program",
+        "https://www.usgs.gov/programs/national-geospatial-program"
+      ],
+      "training_allowed_domains": [
+        "usgs.gov",
+        "www.usgs.gov",
+        "pubs.usgs.gov",
+        "usgs-ocapsv2-public-output-media.s3.us-west-2.amazonaws.com",
+        "usgs-ocapsv2-public-input-media.s3.us-west-2.amazonaws.com",
+        "d9-wret.s3.us-west-2.amazonaws.com",
+        "videos.usgs.gov"
+      ],
+      "explicit_media_seeds": [
+        "https://www.usgs.gov/centers/eros/eyes-earth",
+        "https://www.usgs.gov/products/multimedia-gallery/audio",
+        "https://www.usgs.gov/products/multimedia-gallery/videos"
+      ],
+      "media_feeds": [
+        "https://www.usgs.gov/podcasts/audio/141798/feed.xml"
+      ],
+      "media_api_endpoints": []
+    }
+  }
+}

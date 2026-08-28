@@ -1,0 +1,571 @@
+# Production profile: the canonical, fail-closed policy. Every production run
+# begins as a candidate; explicit promotion is a separate lifecycle action.
+#
+# The production task requirements are consolidated here (instead of a
+# separate release file): 14 tasks required by production_v1, each with a
+# positive sample minimum and quality floors. No release data lives anywhere
+# else in this tree.
+profile = "prod"
+
+[application]
+# release_requirements_id removed: release contract derived from settings tree
+
+[logging]
+console_level = "INFO"
+level = "INFO"
+enable_file = true
+file_path = "runtime/logs/project.log"
+format = "json"
+max_bytes = 52428800
+backup_count = 10
+
+[crawler]
+enabled = true
+
+[crawl_output_gate]
+min_quality_score = 0.55
+min_raw_objects_total = 500
+min_successful_requests_total = 300
+
+[crawl_output_gate.minimum_records]
+page = 100
+document = 5000
+image = 10000
+audio = 2000
+video = 500
+
+[coverage.targets]
+min_missing_to_crawl = 100
+task_targets = { image_text_pair = 10000, audio_text_pair = 2000, video_text_pair = 500, document_text_pair = 5000, ocr_parse = 5000 }
+modality_targets = { image = 10000, audio = 2000, video = 500, document = 5000 }
+
+[coverage.focus]
+enabled = true
+boost_multiplier = 3
+non_target_slots = 1
+
+[augmentation]
+enabled = true
+
+[augmentation.text]
+enabled = true
+title_prefix_enabled = true
+context_prefix_enabled = true
+text_span_focus_enabled = true
+max_variants_per_sample = 2
+
+[augmentation.document]
+enabled = true
+mode = "text_field_only"
+
+[augmentation.image]
+enabled = false
+
+[augmentation.audio]
+enabled = false
+
+[augmentation.video]
+enabled = false
+
+[sources]
+set = "production"
+registry = "source_registry.json"
+active_profile = "public_science"
+selectors = [
+    { name = "nasa" },
+    { name = "noaa" },
+    { name = "usgs" },
+]
+
+# Canonical production scheduling/autoscaling contract. Migrated from the
+# legacy config/files/environments/prod.toml: the profiles are the single
+# runtime truth, there is no fallback to the legacy environment files.
+[collection.scheduling]
+max_seen = 100000
+max_depth = 4
+max_pending_per_host = 4
+max_pending_per_host_under_pressure = 2
+max_pending_per_host_critical = 1
+max_inflight_per_host = 3
+queue_high_watermark = 160
+queue_critical_watermark = 260
+crawl_budget_window = 100
+crawl_budget_low_info_threshold = 0.05
+max_feeds_per_host = 8
+max_feed_depth = 2
+max_document_candidate_depth = 6
+max_audio_candidate_depth = 7
+max_video_candidate_depth = 7
+max_pending_per_host_by_kind = { page = 24, image = 16, audio = 8, document = 8, video = 4 }
+max_pending_per_host_by_kind_under_pressure = { page = 4, image = 4, audio = 3, document = 3, video = 2 }
+max_pending_per_host_by_kind_critical = { page = 1, image = 2, audio = 1, document = 1, video = 1 }
+
+[collection.autoscaler]
+min_workers = 8
+max_workers = 32
+max_scale_up_step = 4
+max_scale_down_step = 2
+slow_task_seconds_threshold = 15.0
+scale_down_cooldown_seconds = 10.0
+
+[collection.processors.audio]
+run_transcription = true
+max_transcription_bytes = 120000000
+
+[collection.processors.video]
+run_transcription = true
+generate_transcriptions = true
+extract_audio_track = true
+
+[preprocessing.transcription]
+enabled = true
+backend = "whisper"
+model_name = ""
+local_files_only = true
+production_mode = true
+# The exact artifact identity is provided by deployment and must be pinned
+# at load time: APP_OVERRIDE__preprocessing.transcription.model_name,
+# ...model_revision, ...model_artifact_hash, ...backend_version.
+# Loading fails closed when any pin is absent (see validate.py).
+
+[preprocessing.ocr]
+backend = "tesseract"
+backend_version = "5.3.0"
+model_id = "tesseract-eng"
+model_revision = "1:4.1.0-2"
+model_artifact_hash = "daa0c97d651c19fba3b25e81317cd697e9908c8208090c94c3905381c23fc047"
+model_artifact_path = "/usr/share/tesseract-ocr/5/tessdata/eng.traineddata"
+production_mode = true
+
+[datasets.paths]
+output_subdirectory = "multimodal"
+training_checkpoint_directory = "runtime/training/checkpoints"
+
+[datasets.raw.manifest_reader]
+run_selection_mode = "coverage_combined"
+
+[datasets.raw.writer]
+manifest_flush_every_records = 250
+manifest_fsync_enabled = true
+manifest_fsync_every_records = 1000
+raw_sync_summary_every_records = 500
+
+[datasets.training.writer]
+write_jsonl = true
+write_shards = true
+shard_format = "webdataset_tar"
+training_shards_directory = "shards"
+shard_max_samples = 1000
+shard_index_filename = "shard_index.json"
+
+[datasets.training.dataset_validator]
+enable_quality_checks = true
+fail_on_quality_checks = true
+fail_on_smoke_trainer = true
+strict_production_acceptance = true
+workflow_profile = "crawler_dataset"
+require_allow_training = true
+require_non_empty_eval_splits = true
+require_validation_report_clean = true
+require_known_license = true
+require_license_evidence = true
+require_safety_passed = true
+require_pii_passed = true
+require_complete_payload = true
+require_media_objects = true
+require_autonomous_multimodal_readiness = true
+require_generation_targets = true
+require_dataset_card = true
+require_model_card = true
+require_evaluation_metrics = true
+require_coverage_report = true
+require_evaluation_report = true
+require_finite_losses = true
+require_supervised_metrics_when_labeled = true
+require_model_accepted_in_production = true
+min_language_confidence = 0.80
+min_total_samples = 100000
+min_train_samples = 80000
+min_val_samples = 10000
+min_test_samples = 10000
+min_text_samples = 30000
+min_document_samples = 10000
+min_image_samples = 25000
+min_audio_samples = 2000
+min_video_samples = 500
+min_training_batches = 1000
+max_test_train_loss_ratio = 2.5
+model_min_total_samples = 100000
+model_min_train_samples = 80000
+model_min_val_samples = 10000
+model_min_test_samples = 10000
+model_min_training_batches = 1000
+model_max_test_train_loss_ratio = 2.5
+min_active_modalities = 5
+min_alignment_coverage = 0.95
+min_quality_score_by_modality = { text = 0.60, image = 0.55, document = 0.65, audio = 0.55, video = 0.55 }
+min_context_score_by_modality = { image = 0.35, document = 0.45 }
+min_alignment_score_by_modality = { image = 0.30, document = 0.65, audio = 0.30, video = 0.30 }
+min_alignment_score_by_task = { image_text_pair = 0.30, document_text_pair = 0.65, pdf_text_pair = 0.65, ocr_parse = 0.65, doc_qa = 0.65, audio_text_pair = 0.30, video_text_pair = 0.30 }
+min_modality_samples_by_split = { train = { text = 24000, image = 20000, document = 8000, audio = 1600, video = 400 }, val = { text = 3000, image = 2500, document = 1000, audio = 200, video = 50 }, test = { text = 3000, image = 2500, document = 1000, audio = 200, video = 50 } }
+max_domain_share = 0.10
+max_language_share = 0.85
+min_speech_translation_bleu = 0.05
+min_task_samples = { text_pretrain = 30000, instruction_following = 5000, document_text_pair = 10000, image_text_pair = 25000, audio_text_pair = 2000, video_text_pair = 500, pdf_text_pair = 5000, speech_translation = 0, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 2500, document_summarization = 0, document_comparison = 0, table_extraction = 0, vqa = 2500, ocr_parse = 5000, speech_transcription = 0, audio_summarization = 0, audio_emotion = 0, audio_qa = 1000, video_qa = 500, video_summarization = 0, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 5000, cross_modal_consistency = 5000 }
+require_all_modalities_in_train = true
+require_all_modalities_in_val = true
+require_all_modalities_in_test = true
+
+[multimodal]
+model_family = "multimodal_model"
+enabled_modalities = ["text", "document", "image", "audio", "video"]
+output_modalities = ["class", "embedding", "text", "json"]
+fusion_dim = 512
+projection_dim = 512
+raw_text_vocab_size = 32768
+raw_text_max_tokens = 512
+raw_image_size = 224
+raw_audio_num_samples = 160000
+raw_video_frames = 8
+
+[multimodal.text]
+input_dim = 512
+hidden_dim = 512
+output_dim = 512
+
+[multimodal.document]
+input_dim = 512
+hidden_dim = 512
+output_dim = 512
+
+[multimodal.image]
+input_dim = 512
+hidden_dim = 512
+output_dim = 512
+
+[multimodal.audio]
+input_dim = 512
+hidden_dim = 512
+output_dim = 512
+
+[multimodal.video]
+input_dim = 512
+hidden_dim = 512
+output_dim = 512
+
+[multimodal.text_decoder]
+enabled = true
+vocab_size = 32768
+hidden_dim = 512
+num_layers = 8
+num_heads = 8
+max_target_tokens = 512
+max_context_tokens = 1024
+max_text_context_tokens = 256
+max_document_context_tokens = 256
+max_image_context_tokens = 128
+max_audio_context_tokens = 192
+max_video_context_tokens = 192
+
+[multimodal.audio_tokenizer]
+enabled = false
+
+[multimodal.vocoder]
+enabled = false
+
+[multimodal.generation]
+allow_tensor_artifact_fallback = false
+require_decodeable_generation_outputs = true
+
+[multimodal.runtime]
+profile = "gpu_train"
+latency_target_ms = 800
+
+[training]
+device = "cuda"
+num_workers = 4
+batch_size = 16
+epochs = 12
+precision = "fp16"
+distributed_strategy = "none"
+gradient_accumulation_steps = 2
+learning_rate = 2e-4
+scheduler_interval = "step"
+drop_last = true
+pin_memory = true
+persistent_workers = true
+prefetch_factor = 2
+
+run_mode = "full"
+release_stage = "candidate"
+training_backend = "dense_transformer"
+monitor_metric = "validation_loss"
+text_tokenizer_backend = "subword"
+text_tokenizer_name = "repo_subword"
+text_tokenizer_max_tokens = 512
+text_tokenizer_vocab_size = 32768
+text_tokenizer_artifact_version = "byte_bpe_v2"
+materialized_tensor_validate_shapes = true
+weight_decay = 0.01
+min_learning_rate = 1e-6
+early_stopping_patience = 4
+export_artifacts = true
+ocr_sequence_loss_weight = 0.25
+
+# production_v1 required tasks (all five modalities). The optional
+# summarization/information-extraction family is de-scoped from the first
+# production release: it has no dataset sample builders yet.
+tasks = [
+    "text_pretrain",
+    "instruction_following",
+    "document_text_pair",
+    "pdf_text_pair",
+    "doc_qa",
+    "image_text_pair",
+    "ocr_parse",
+    "vqa",
+    "audio_text_pair",
+    "audio_qa",
+    "video_text_pair",
+    "video_qa",
+    "multimodal_retrieval",
+    "cross_modal_consistency",
+]
+approved_beta_tasks = [
+    "instruction_following",
+    "doc_qa",
+    "image_text_pair",
+    "ocr_parse",
+    "vqa",
+    "audio_text_pair",
+    "audio_qa",
+    "video_text_pair",
+    "video_qa",
+    "multimodal_retrieval",
+    "cross_modal_consistency",
+]
+curriculum_schedule = [
+    "text_pretrain",
+    "instruction_following",
+    "document_text_pair",
+    "pdf_text_pair",
+    "doc_qa",
+    "image_text_pair",
+    "ocr_parse",
+    "vqa",
+    "audio_text_pair",
+    "audio_qa",
+    "video_text_pair",
+    "video_qa",
+    "multimodal_retrieval",
+    "cross_modal_consistency",
+]
+task_sampling_weights = { text_pretrain = 1.0, instruction_following = 1.2, document_text_pair = 1.0, pdf_text_pair = 1.0, doc_qa = 1.2, image_text_pair = 1.0, ocr_parse = 1.2, vqa = 1.2, audio_text_pair = 1.0, audio_qa = 1.0, video_text_pair = 1.0, video_qa = 1.2, multimodal_retrieval = 1.0, cross_modal_consistency = 0.8 }
+task_family_sampling_weights = { text = 1.5, document = 1.5, image = 1.2, audio = 1.0, video = 1.0, cross_modal = 0.8, retrieval = 0.8, multimodal_reasoning = 0.9 }
+min_task_samples = { text_pretrain = 30000, instruction_following = 5000, document_text_pair = 10000, image_text_pair = 25000, audio_text_pair = 2000, video_text_pair = 500, pdf_text_pair = 5000, speech_translation = 0, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 2500, document_summarization = 0, document_comparison = 0, table_extraction = 0, vqa = 2500, ocr_parse = 5000, speech_transcription = 0, audio_summarization = 0, audio_emotion = 0, audio_qa = 1000, video_qa = 500, video_summarization = 0, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 5000, cross_modal_consistency = 5000 }
+disable_undercovered_tasks = false
+drop_samples_with_invalid_targets = true
+dynamic_sampling = true
+
+# Production_v1 required tasks (all five modalities), each carrying the
+# evaluation floors declared for production. min_samples mirrors the
+# dataset/training minima of the legacy production environment.
+# Metrics match evaluator/task_metrics.py output exactly.
+[[release.tasks]]
+name = "text_pretrain"
+min_samples = 30000
+[[release.tasks.metrics]]
+name = "masked_token_accuracy"
+min = 0.20
+
+[[release.tasks]]
+name = "instruction_following"
+min_samples = 5000
+[[release.tasks.metrics]]
+name = "token_f1"
+min = 0.20
+
+[[release.tasks]]
+name = "document_text_pair"
+min_samples = 10000
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+[[release.tasks]]
+name = "pdf_text_pair"
+min_samples = 5000
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+[[release.tasks]]
+name = "doc_qa"
+min_samples = 2500
+[[release.tasks.metrics]]
+name = "doc_qa_f1"
+min = 0.20
+
+[[release.tasks]]
+name = "image_text_pair"
+min_samples = 25000
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+[[release.tasks]]
+name = "ocr_parse"
+min_samples = 5000
+[[release.tasks.metrics]]
+name = "character_error_rate"
+max = 0.50
+[[release.tasks.metrics]]
+name = "word_error_rate"
+max = 0.50
+
+[[release.tasks]]
+name = "vqa"
+min_samples = 2500
+[[release.tasks.metrics]]
+name = "vqa_accuracy"
+min = 0.20
+
+[[release.tasks]]
+name = "audio_text_pair"
+min_samples = 2000
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+[[release.tasks]]
+name = "audio_qa"
+min_samples = 1000
+[[release.tasks.metrics]]
+name = "token_f1"
+min = 0.20
+
+[[release.tasks]]
+name = "video_text_pair"
+min_samples = 500
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+[[release.tasks]]
+name = "video_qa"
+min_samples = 500
+[[release.tasks.metrics]]
+name = "token_f1"
+min = 0.20
+
+[[release.tasks]]
+name = "multimodal_retrieval"
+min_samples = 5000
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+[[release.tasks]]
+name = "cross_modal_consistency"
+min_samples = 5000
+[[release.tasks.metrics]]
+name = "recall_at_1"
+min = 0.20
+[[release.tasks.metrics]]
+name = "embedding_similarity_mean"
+min = 0.20
+
+# Production_v1 release contract: optional tasks, blocked capabilities, and
+# reproducibility policy. The release_requirements derived from this profile
+# enforces the canonical production scope.
+[release]
+release_id = "production_v1"
+
+optional_tasks = [
+    "summarization",
+    "information_extraction",
+    "document_summarization",
+    "audio_summarization",
+    "video_summarization",
+    "speech_translation",
+    "scene_understanding",
+    "scene_retrieval",
+    "action_recognition",
+]
+
+[[release.blocked_capabilities]]
+capability = "image_generation"
+status = "blocked"
+reason = "no production image generator/decoder; text_to_image stays out of scope"
+
+[[release.blocked_capabilities]]
+capability = "audio_generation"
+status = "blocked"
+reason = "no production audio tokenizer/vocoder; speech_to_audio stays out of scope"
+
+[[release.blocked_capabilities]]
+capability = "video_generation"
+status = "blocked"
+reason = "no production video generator/decoder; text_to_video stays out of scope"
+
+[[release.blocked_capabilities]]
+capability = "continuous_audio_tokens"
+status = "blocked"
+reason = "continuous audio tokenization is not supported in production"
+
+[[release.blocked_capabilities]]
+capability = "cross_modal_embedding_search"
+status = "research_only"
+reason = "multimodal_retrieval training stays required; serving-side embedding search stays out of production scope"
+
+[[release.blocked_capabilities]]
+capability = "emotion_mood_transfer"
+status = "research_only"
+reason = "emotion classification and synthesis stay out of production scope"
+
+[[release.blocked_capabilities]]
+capability = "speaker_recognition"
+status = "research_only"
+reason = "speaker identification and verification stay out of production scope"
+
+[[release.blocked_capabilities]]
+capability = "chart_understanding"
+status = "research_only"
+reason = "chart question answering and chart generation stay out of production scope"
+
+[[release.blocked_capabilities]]
+capability = "audio_image_document_scanning"
+status = "research_only"
+reason = "scanning audio/image sources for documents stays out of production scope"
+
+[release.reproducibility]
+seeds = [42, 43, 44]
+require_deterministic_execution = true
+
+[release.reproducibility.metric_tolerances]
+validation_loss = 0.03
+test_loss = 0.03
+
+# Initial runtime limits, baseline only: calibrate from measured production
+# runs before the release gate vouches for them.
+[release.limits]
+max_batch_latency_ms = 250
+max_peak_memory_mb = 16384

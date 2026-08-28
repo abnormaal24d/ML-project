@@ -1,0 +1,1120 @@
+{
+  "$defs": {
+    "Access": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_expires_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Expires At"
+        },
+        "checked": {
+          "title": "Checked",
+          "type": "boolean"
+        },
+        "crawl_delay_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Crawl Delay Seconds"
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "deny",
+            "unavailable",
+            "unreachable"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "fetched_at": {
+          "title": "Fetched At",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "robots_url": {
+          "title": "Robots Url",
+          "type": "string"
+        },
+        "user_agent": {
+          "title": "User Agent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "checked",
+        "decision",
+        "reason",
+        "robots_url",
+        "user_agent",
+        "fetched_at",
+        "cache_expires_at",
+        "crawl_delay_seconds"
+      ],
+      "title": "Access",
+      "type": "object"
+    },
+    "Collection": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "title": "Allowed",
+          "type": "boolean"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowed",
+        "reason"
+      ],
+      "title": "Collection",
+      "type": "object"
+    },
+    "Dedupe": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "title": "Checked",
+          "type": "boolean"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duplicate Of"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail"
+          ],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "checked",
+        "result",
+        "content_hash",
+        "duplicate_of"
+      ],
+      "title": "Dedupe",
+      "type": "object"
+    },
+    "Governance": {
+      "additionalProperties": false,
+      "properties": {
+        "access": {
+          "$ref": "#/$defs/Access"
+        },
+        "collection": {
+          "$ref": "#/$defs/Collection"
+        },
+        "dedupe": {
+          "$ref": "#/$defs/Dedupe"
+        },
+        "lineage": {
+          "$ref": "#/$defs/Lineage"
+        },
+        "privacy": {
+          "$ref": "#/$defs/Privacy"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        },
+        "rights": {
+          "$ref": "#/$defs/Rights"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "training": {
+          "$ref": "#/$defs/Training"
+        }
+      },
+      "required": [
+        "source",
+        "collection",
+        "access",
+        "rights",
+        "privacy",
+        "dedupe",
+        "quality",
+        "lineage",
+        "training"
+      ],
+      "title": "Governance",
+      "type": "object"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "fetched_at": {
+          "title": "Fetched At",
+          "type": "string"
+        },
+        "final_url": {
+          "title": "Final Url",
+          "type": "string"
+        },
+        "origin": {
+          "title": "Origin",
+          "type": "string"
+        },
+        "requested_url": {
+          "title": "Requested Url",
+          "type": "string"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "complete",
+        "requested_url",
+        "final_url",
+        "origin",
+        "fetched_at",
+        "run_id"
+      ],
+      "title": "Lineage",
+      "type": "object"
+    },
+    "Privacy": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "none",
+            "redacted",
+            "rejected"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "checked": {
+          "title": "Checked",
+          "type": "boolean"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail"
+          ],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "checked",
+        "result",
+        "action",
+        "reason"
+      ],
+      "title": "Privacy",
+      "type": "object"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "title": "Checked",
+          "type": "boolean"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail"
+          ],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "checked",
+        "result",
+        "reason"
+      ],
+      "title": "Quality",
+      "type": "object"
+    },
+    "Rights": {
+      "additionalProperties": false,
+      "description": "Explicit rights evidence used for training permission decisions.",
+      "properties": {
+        "attribution_required": {
+          "title": "Attribution Required",
+          "type": "boolean"
+        },
+        "checked": {
+          "title": "Checked",
+          "type": "boolean"
+        },
+        "commercial_use_allowed": {
+          "title": "Commercial Use Allowed",
+          "type": "boolean"
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "deny"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "evidence_kind": {
+          "enum": [
+            "source_registry",
+            "robots",
+            "terms_page"
+          ],
+          "title": "Evidence Kind",
+          "type": "string"
+        },
+        "evidence_url": {
+          "title": "Evidence Url",
+          "type": "string"
+        },
+        "expression": {
+          "title": "Expression",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "review_expires_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Review Expires At"
+        },
+        "rights_reserved": {
+          "title": "Rights Reserved",
+          "type": "boolean"
+        },
+        "rules_version": {
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "tdm_allowed": {
+          "title": "Tdm Allowed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checked",
+        "decision",
+        "expression",
+        "evidence_url",
+        "evidence_kind",
+        "reason",
+        "rights_reserved",
+        "tdm_allowed",
+        "commercial_use_allowed",
+        "attribution_required",
+        "review_expires_at",
+        "rules_version"
+      ],
+      "title": "Rights",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "registry_version": {
+          "title": "Registry Version",
+          "type": "string"
+        },
+        "rules_version": {
+          "title": "Rules Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "rules_version",
+        "registry_version"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Training": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "title": "Allowed",
+          "type": "boolean"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "rules_version": {
+          "title": "Rules Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowed",
+        "reason",
+        "rules_version"
+      ],
+      "title": "Training",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Serializable record for manifest entries.",
+  "properties": {
+    "admission_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Admission Reason"
+    },
+    "alignment_group_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Alignment Group Id"
+    },
+    "asset_context": {
+      "additionalProperties": true,
+      "default": {},
+      "title": "Asset Context",
+      "type": "object"
+    },
+    "asset_downloaded": {
+      "default": false,
+      "title": "Asset Downloaded",
+      "type": "boolean"
+    },
+    "asset_fetch_mode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Asset Fetch Mode"
+    },
+    "asset_metadata_only": {
+      "default": false,
+      "title": "Asset Metadata Only",
+      "type": "boolean"
+    },
+    "asset_rejection_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Asset Rejection Reason"
+    },
+    "asset_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Asset Url"
+    },
+    "byte_size": {
+      "title": "Byte Size",
+      "type": "integer"
+    },
+    "category": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Category"
+    },
+    "content_sha256": {
+      "title": "Content Sha256",
+      "type": "string"
+    },
+    "content_signature": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Signature"
+    },
+    "content_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Content Type"
+    },
+    "context_available": {
+      "default": false,
+      "title": "Context Available",
+      "type": "boolean"
+    },
+    "depth": {
+      "title": "Depth",
+      "type": "integer"
+    },
+    "discovery_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Discovery Reason"
+    },
+    "domain": {
+      "title": "Domain",
+      "type": "string"
+    },
+    "embed_host": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Embed Host"
+    },
+    "embed_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Embed Url"
+    },
+    "encoding": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Encoding"
+    },
+    "enrichment": {
+      "additionalProperties": true,
+      "default": {},
+      "title": "Enrichment",
+      "type": "object"
+    },
+    "enrichment_available": {
+      "default": false,
+      "title": "Enrichment Available",
+      "type": "boolean"
+    },
+    "extension": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Extension"
+    },
+    "fetch_attempt": {
+      "title": "Fetch Attempt",
+      "type": "integer"
+    },
+    "fetch_duration_seconds": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fetch Duration Seconds"
+    },
+    "fetch_mode": {
+      "default": "full",
+      "title": "Fetch Mode",
+      "type": "string"
+    },
+    "fetch_record_id": {
+      "title": "Fetch Record Id",
+      "type": "string"
+    },
+    "fetched_at": {
+      "title": "Fetched At",
+      "type": "string"
+    },
+    "final_url": {
+      "title": "Final Url",
+      "type": "string"
+    },
+    "governance": {
+      "$ref": "#/$defs/Governance"
+    },
+    "http_etag": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Http Etag"
+    },
+    "http_last_modified": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Http Last Modified"
+    },
+    "is_complete_payload": {
+      "default": true,
+      "title": "Is Complete Payload",
+      "type": "boolean"
+    },
+    "item_id": {
+      "title": "Item Id",
+      "type": "string"
+    },
+    "keyframe_paths": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Keyframe Paths",
+      "type": "array"
+    },
+    "kind": {
+      "title": "Kind",
+      "type": "string"
+    },
+    "language": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Language"
+    },
+    "language_confidence": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Language Confidence"
+    },
+    "language_detector_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Language Detector Version"
+    },
+    "language_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Language Source"
+    },
+    "media_identity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Media Identity"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "default": {},
+      "title": "Metadata",
+      "type": "object"
+    },
+    "mime_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Mime Type"
+    },
+    "modality": {
+      "title": "Modality",
+      "type": "string"
+    },
+    "normalized_url": {
+      "title": "Normalized Url",
+      "type": "string"
+    },
+    "object_id": {
+      "title": "Object Id",
+      "type": "string"
+    },
+    "observed_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observed Bytes"
+    },
+    "parent_fetch_record_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Fetch Record Id"
+    },
+    "parent_stable_url_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Stable Url Id"
+    },
+    "parent_text_preview": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Text Preview"
+    },
+    "parent_title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Title"
+    },
+    "parent_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Parent Url"
+    },
+    "path": {
+      "title": "Path",
+      "type": "string"
+    },
+    "payload_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload Path"
+    },
+    "payload_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload Sha256"
+    },
+    "previous_fetch_record_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Fetch Record Id"
+    },
+    "query": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Query"
+    },
+    "record_version": {
+      "default": 1,
+      "title": "Record Version",
+      "type": "integer"
+    },
+    "referrer_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Referrer Url"
+    },
+    "relevance_score": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Relevance Score"
+    },
+    "requested_kind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Requested Kind"
+    },
+    "requested_url": {
+      "title": "Requested Url",
+      "type": "string"
+    },
+    "resolved_kind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resolved Kind"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selection_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Selection Reason"
+    },
+    "source_content_length": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Content Length"
+    },
+    "source_content_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Content Type"
+    },
+    "source_page_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Page Url"
+    },
+    "source_type": {
+      "title": "Source Type",
+      "type": "string"
+    },
+    "stable_url_id": {
+      "title": "Stable Url Id",
+      "type": "string"
+    },
+    "status": {
+      "default": "fetched",
+      "title": "Status",
+      "type": "string"
+    },
+    "status_code": {
+      "title": "Status Code",
+      "type": "integer"
+    },
+    "storage_relative_path": {
+      "title": "Storage Relative Path",
+      "type": "string"
+    },
+    "thumbnail_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Thumbnail Path"
+    },
+    "trainability_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trainability Reason"
+    },
+    "transcript_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Transcript Path"
+    }
+  },
+  "required": [
+    "schema_version",
+    "item_id",
+    "fetch_record_id",
+    "stable_url_id",
+    "object_id",
+    "run_id",
+    "requested_url",
+    "final_url",
+    "normalized_url",
+    "domain",
+    "path",
+    "query",
+    "extension",
+    "parent_url",
+    "referrer_url",
+    "kind",
+    "modality",
+    "depth",
+    "source_type",
+    "fetch_attempt",
+    "status_code",
+    "content_type",
+    "mime_type",
+    "encoding",
+    "language",
+    "content_sha256",
+    "byte_size",
+    "storage_relative_path",
+    "http_etag",
+    "http_last_modified",
+    "fetched_at",
+    "governance"
+  ],
+  "title": "DatasetRecord",
+  "type": "object"
+}

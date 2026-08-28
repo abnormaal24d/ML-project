@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Leakage Report v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "passed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "train_eval_url_overlap": {
+      "type": "integer"
+    },
+    "train_test_url_overlap": {
+      "type": "integer"
+    },
+    "exact_content_hash_overlap": {
+      "type": "integer"
+    },
+    "near_duplicate_overlap": {
+      "type": "integer"
+    },
+    "perceptual_hash_overlap": {
+      "type": "integer"
+    },
+    "max_eval_domain_share": {
+      "type": "number"
+    },
+    "passed": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dataset_manifest_sha256": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "experiment_sha256": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "kind": {
+      "const": "reproducibility_report"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "release_requirements_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "release_requirements_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "reproducibility_deterministic_required": {
+      "type": "boolean"
+    },
+    "reproducibility_metric_tolerances": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "type": "object"
+    },
+    "required_seeds": {
+      "items": {
+        "type": "integer"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "run_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "run_receipts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "seed",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "3.2"
+    },
+    "seeds": {
+      "items": {
+        "type": "integer"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "violations": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "run_ids",
+    "seeds",
+    "required_seeds",
+    "release_requirements_id",
+    "release_requirements_sha256",
+    "reproducibility_deterministic_required",
+    "reproducibility_metric_tolerances",
+    "experiment_sha256",
+    "dataset_manifest_sha256",
+    "run_receipts",
+    "metrics",
+    "violations",
+    "passed"
+  ],
+  "type": "object"
+}

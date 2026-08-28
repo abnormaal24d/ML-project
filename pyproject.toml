@@ -1,0 +1,183 @@
+[build-system]
+requires = ["setuptools==83.0.0", "wheel==0.47.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multimodal-crawler"
+version = "0.3.0"
+description = "Autonomous multimodal dataset crawler."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "aiodns>=3.2,<4.0",
+    "aiohttp>=3.9,<4.0",
+    "beautifulsoup4>=4.12,<5.0",
+    "html5lib>=1.1,<2.0",
+    "lxml>=5.3,<7.0",
+    "defusedxml>=0.7,<1.0",
+    "feedparser>=6.0,<7.0",
+    "filelock>=3.16,<4.0",
+    "filetype>=1.2,<2.0",
+    "Pillow>=10.0,<13.0",
+    "pydantic>=2.7,<3.0",
+    "soupsieve>=2.5,<3.0",
+]
+
+[project.optional-dependencies]
+# ADR-0002: external models are preprocessing-only. The scratch training
+# environment remains free of pretrained-model stacks (training-scratch).
+# Dev is a full multimodal golden-path install: tooling + media runtimes.
+preprocessing-media = [
+    "av>=12.0,<16.0",
+    "cryptography>=48.0.1,<50.0",
+    "faster-whisper>=1.1,<2.0",
+    "librosa>=0.10,<1.0",
+    "mutagen>=1.47,<2.0",
+    "numpy>=1.26,<3.0",
+    "opencv-python>=4.9,<5.0",
+    "pdf2image>=1.17,<2.0",
+    "pyannote.audio>=3.4,<4.0",
+    "pypdf>=6.13.3,<7.0",
+    "pytesseract>=0.3.10,<0.4",
+    "rapidocr-onnxruntime>=1.4,<2.0",
+    "scipy>=1.12,<2.0",
+    "soundfile>=0.12,<1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+]
+
+training-scratch = [
+    "numpy>=1.26,<3.0",
+    "safetensors>=0.4,<1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+]
+
+dev = [
+    "bandit>=1.9,<2.0",
+    "build>=1.2,<2.0",
+    "cyclonedx-bom>=5.0,<8.0",
+    "mypy==1.20.2",
+    "numpy>=1.26,<3.0",
+    "pip-audit>=2.7,<3.0",
+    "pip-licenses>=5.5,<6.0",
+    "pytest>=8.2,<9.0",
+    "pytest-asyncio>=0.23,<1.0",
+    "pytest-cov>=5.0,<7.0",
+    "ruff>=0.4,<1.0",
+    "safetensors>=0.4,<1.0",
+    "setuptools>=83.0,<84.0",
+    "types-defusedxml==0.7.0.20260504",
+    "typing-extensions==4.16.0",
+    "vulture>=2.11,<3.0",
+    "wheel>=0.47,<1.0",
+    # Multimodal media stack (same set as preprocessing-media; inlined so
+    # ``pip install -e ".[dev]"`` is the single golden-path install).
+    "av>=12.0,<16.0",
+    "cryptography>=48.0.1,<50.0",
+    "faster-whisper>=1.1,<2.0",
+    "librosa>=0.10,<1.0",
+    "mutagen>=1.47,<2.0",
+    "opencv-python>=4.9,<5.0",
+    "pdf2image>=1.17,<2.0",
+    "pyannote.audio>=3.4,<4.0",
+    "pypdf>=6.13.3,<7.0",
+    "pytesseract>=0.3.10,<0.4",
+    "rapidocr-onnxruntime>=1.4,<2.0",
+    "scipy>=1.12,<2.0",
+    "soundfile>=0.12,<1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+]
+
+[project.scripts]
+multimodal-crawler = "orchestration.main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = [
+    "augmentation*",
+    "config*",
+    "crawler*",
+    "datachecker*",
+    "evaluator*",
+    "logger*",
+    "mmcrawler_datasets*",
+    "multimodal*",
+    "orchestration*",
+    "preprocessing*",
+    "release*",
+    "schemas*",
+    "shared*",
+    "training*",
+]
+namespaces = true
+
+[tool.setuptools.package-data]
+config = [
+    "files/**/*.toml",
+    "files/**/*.json",
+    "files/env/.env.example",
+]
+schemas = ["*.json"]
+training = ["export/*.md"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+extend-exclude = [
+    # Generated checkpoint version directories can contain files that are
+    # inaccessible while a training process owns them. They are runtime
+    # state, never Python source.
+    "checkpoint.pt.d",
+    "checkpoint.pt.d/**",
+    ".codex-*",
+    ".codex-*/**",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "BLE",
+]
+ignore = ["E501", "BLE001"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+warn_unreachable = true
+warn_unused_configs = true
+no_incremental = true
+# Runtime test doubles intentionally use SimpleNamespace and failure stubs.
+# Product packages remain fully checked; tests are validated by Ruff + pytest.
+exclude = '^(tests|\.venv|venv|_pytest[^\\/]*|\.mypy_cache|\.ruff_cache|build|dist|dist-check|checkpoint\.pt\.d|\.codex-[^\\/]*)[\\/]'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.vulture]
+paths = ["."]
+min_confidence = 90
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "checkpoint.pt.d",
+    ".codex-*",
+    "build",
+    "dist",
+    "runtime",
+    "artifacts",
+    "__pycache__",
+]

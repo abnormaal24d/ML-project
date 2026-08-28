@@ -1,0 +1,174 @@
+# Test profile: everything minimal and safe, nothing pinned.
+profile = "test"
+
+[logging]
+level = "INFO"
+enable_console = true
+enable_file = false
+
+[crawler]
+enabled = true
+
+[crawl_output_gate]
+min_quality_score = 0.4
+min_raw_objects_total = 10
+min_successful_requests_total = 5
+
+[crawl_output_gate.minimum_records]
+page = 0
+document = 2
+image = 2
+audio = 1
+video = 1
+
+[coverage.targets]
+min_missing_to_crawl = 1
+task_targets = {}
+modality_targets = {}
+
+[sources]
+set = "default"
+registry = "source_registry.json"
+active_profile = "public_science_small"
+selectors = [
+    { name = "usgs", max_seeds = 1 },
+]
+
+[datasets.training.dataset_validator]
+enable_quality_checks = true
+fail_on_quality_checks = true
+fail_on_smoke_trainer = true
+strict_production_acceptance = false
+workflow_profile = "crawler_dataset"
+require_allow_training = true
+min_total_samples = 100
+min_train_samples = 60
+min_val_samples = 20
+min_test_samples = 20
+min_text_samples = 10
+min_document_samples = 2
+min_image_samples = 2
+min_audio_samples = 1
+min_video_samples = 1
+min_training_batches = 5
+max_test_train_loss_ratio = 2.5
+model_min_total_samples = 100
+model_min_train_samples = 60
+model_min_val_samples = 20
+model_min_test_samples = 20
+model_min_training_batches = 5
+model_max_test_train_loss_ratio = 2.5
+min_task_samples = {}
+
+[training]
+run_mode = "smoke"
+training_backend = "pipeline_smoke"
+device = "cpu"
+num_workers = 0
+batch_size = 4
+epochs = 2
+precision = "fp32"
+distributed_strategy = "none"
+gradient_accumulation_steps = 1
+learning_rate = 3e-4
+drop_last = false
+tasks = []
+approved_beta_tasks = []
+curriculum_schedule = []
+task_sampling_weights = {}
+task_family_sampling_weights = {}
+min_task_samples = {}
+
+[multimodal]
+output_modalities = ["class", "embedding", "text", "json", "audio"]
+fusion_dim = 128
+projection_dim = 128
+raw_text_vocab_size = 4096
+raw_audio_num_samples = 8000
+raw_video_frames = 2
+
+[multimodal.text]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.document]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.image]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.audio]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.video]
+input_dim = 128
+hidden_dim = 128
+output_dim = 128
+
+[multimodal.text_decoder]
+enabled = true
+vocab_size = 4096
+hidden_dim = 128
+num_layers = 2
+num_heads = 4
+max_target_tokens = 128
+max_context_tokens = 128
+max_text_context_tokens = 32
+max_document_context_tokens = 24
+max_image_context_tokens = 24
+max_audio_context_tokens = 24
+max_video_context_tokens = 24
+
+[multimodal.audio_tokenizer]
+enabled = true
+codec = "continuous"
+sample_rate = 16000
+frame_ms = 20
+hop_ms = 20
+codebook_size = 1024
+n_codebooks = 1
+token_dim = 128
+
+[multimodal.image_generator]
+enabled = false
+safety_filter_enabled = false
+watermark_metadata_enabled = false
+
+[multimodal.vocoder]
+enabled = true
+sample_rate = 24000
+hop_length = 320
+preserve_prosody = true
+
+[multimodal.image_codec]
+latent_channels = 8
+downsample_factor = 16
+hidden_dim = 256
+input_resolution = 64
+output_channels = 3
+upsample_blocks = 4
+
+[multimodal.generation]
+allow_tensor_artifact_fallback = false
+require_decodeable_generation_outputs = true
+max_new_tokens = 64
+temperature = 0.7
+top_p = 0.9
+top_k = 0
+beam_size = 1
+image_steps = 30
+audio_codec_rate = 50
+streaming_chunk_ms = 40
+
+[multimodal.runtime]
+profile = "dev_cpu"
+latency_target_ms = 1000
+
+[release]

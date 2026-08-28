@@ -1,0 +1,34 @@
+# Defense in depth for the optional git-archive release path. The Python
+# packager applies the same exclusions independently and verifies the result.
+coverage/ export-ignore
+runtime/ export-ignore
+artifacts/ export-ignore
+data/ export-ignore
+dist/ export-ignore
+dist-clean/ export-ignore
+build/ export-ignore
+htmlcov/ export-ignore
+.release-staging*/ export-ignore
+terminals/ export-ignore
+.mypy_cache/ export-ignore
+.ruff_cache/ export-ignore
+
+*.pyc export-ignore
+*.pyo export-ignore
+*.pyd export-ignore
+*.log export-ignore
+*.sqlite export-ignore
+*.sqlite3 export-ignore
+*.jsonl export-ignore
+*.pt export-ignore
+*.pth export-ignore
+*.ckpt export-ignore
+*.onnx export-ignore
+*.safetensors export-ignore
+*.bak export-ignore
+*.backup export-ignore
+*.orig export-ignore
+*.rej export-ignore
+*.swp export-ignore
+*.swo export-ignore
+*~ export-ignore

@@ -1,0 +1,50 @@
+include pyproject.toml
+include README.md
+include LICENSE
+include MANIFEST.in
+include Makefile
+include scripts/check_python_version.py
+include requirements/constraints-py312-cpu.txt
+include requirements/constraints-py312-preprocessing.txt
+include config/files/env/.env.example
+recursive-include config/profiles *.toml
+recursive-include config/files/governance *.json
+recursive-include config/files/sources *.json
+recursive-include schemas *.json
+recursive-include docs *.md
+
+graft augmentation
+graft config
+graft crawler
+graft datachecker
+graft evaluator
+graft logger
+graft mmcrawler_datasets
+graft multimodal
+graft orchestration
+graft preprocessing
+graft release
+graft schemas
+graft shared
+graft training
+
+prune data
+prune data/raw
+prune data/curated
+prune data/interim
+prune data/processed
+prune data/registry
+prune runtime
+prune artifacts
+prune build
+prune dist
+prune dist-check
+prune .mypy_cache
+prune .ruff_cache
+prune .venv
+prune .release-staging
+
+recursive-exclude * __pycache__ *.py[cod] *.pyo *.pyd
+global-exclude *.zip *.jsonl *.mp3 *.mp4 *.pdf *.pt *.pth *.onnx *.sqlite3
+global-exclude *.log *.lock *.ckpt *.safetensors *.bak *.backup *.orig *.rej
+global-exclude *.swp *.swo *~ requirements.lock constraints.txt
