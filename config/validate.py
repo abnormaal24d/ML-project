@@ -9,13 +9,6 @@ from __future__ import annotations
 from config.errors import ConfigError
 from config.settings.root import Settings
 
-TRANSCRIPTION_PIN_FIELDS: tuple[str, ...] = (
-    "model_name",
-    "model_revision",
-    "model_artifact_hash",
-    "backend_version",
-)
-
 
 def _check_duplicates(settings: Settings) -> None:
     seen: set[str] = set()
@@ -47,18 +40,6 @@ def _check_production(settings: Settings) -> None:
     limits = settings.release.limits
     if limits.max_batch_latency_ms <= 0 or limits.max_peak_memory_mb <= 0:
         raise ConfigError("production requires positive runtime limits")
-    transcription = settings.preprocessing.transcription
-    if transcription.enabled:
-        missing = [
-            field
-            for field in TRANSCRIPTION_PIN_FIELDS
-            if getattr(transcription, field) in (None, "")
-        ]
-        if missing:
-            raise ConfigError(
-                "production Whisper transcription requires deployment "
-                f"pins, missing: {', '.join(missing)}"
-            )
 
 
 def validate_settings(settings: Settings) -> None:
