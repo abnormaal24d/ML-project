@@ -13,9 +13,6 @@ from pydantic import Field, field_validator, model_validator
 
 from config.base.settings_model import SettingsModel
 from config.collection.value_normalizers import normalize_string_tuple
-from config.environment.default_values import (
-    DEFAULT_INFLIGHT_HOST_WAIT_SECONDS,
-)
 
 
 class ExtensionDetectorSettings(SettingsModel):
@@ -160,10 +157,7 @@ class SchedulingSettings(SettingsModel):
         }
     )
     max_inflight_per_host: int = Field(default=1, ge=1)
-    inflight_host_wait_seconds: float = Field(
-        default=DEFAULT_INFLIGHT_HOST_WAIT_SECONDS,
-        gt=0.0,
-    )
+    inflight_host_wait_seconds: float = Field(default=0.1, gt=0.0)
 
     max_total_attempts: int = Field(default=4, ge=0)
     max_deferrals: int = Field(default=3, ge=0)
@@ -242,12 +236,19 @@ class SchedulingSettings(SettingsModel):
             )
 
         allowed_kinds = {"page", "image", "audio", "document", "video"}
-        for field_name in (
-            "max_pending_per_host_by_kind",
-            "max_pending_per_host_by_kind_under_pressure",
-            "max_pending_per_host_by_kind_critical",
-        ):
-            for kind, limit in getattr(self, field_name).items():
+        pending_limits = (
+            ("max_pending_per_host_by_kind", self.max_pending_per_host_by_kind),
+            (
+                "max_pending_per_host_by_kind_under_pressure",
+                self.max_pending_per_host_by_kind_under_pressure,
+            ),
+            (
+                "max_pending_per_host_by_kind_critical",
+                self.max_pending_per_host_by_kind_critical,
+            ),
+        )
+        for field_name, limits in pending_limits:
+            for kind, limit in limits.items():
                 if kind not in allowed_kinds:
                     raise ValueError(
                         f"{field_name} only supports: "
