@@ -11,9 +11,6 @@ from pydantic import Field, field_validator, model_validator
 
 from config.base.settings_model import SettingsModel
 from config.collection.value_normalizers import normalize_status_code_tuple
-from config.environment.default_values import (
-    DEFAULT_MEDIA_ANALYSIS_TIMEOUT_SECONDS,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -318,14 +315,8 @@ class TimeoutRulesSettings(SettingsModel):
     large_media_request_timeout_seconds: float = Field(default=300.0, gt=0.0)
     head_preflight_timeout_seconds: float = Field(default=8.0, gt=0.0)
     body_stream_timeout_seconds: float = Field(default=45.0, gt=0.0)
-    media_body_stream_timeout_seconds: float = Field(
-        default=DEFAULT_MEDIA_ANALYSIS_TIMEOUT_SECONDS,
-        gt=0.0,
-    )
-    document_body_stream_timeout_seconds: float = Field(
-        default=DEFAULT_MEDIA_ANALYSIS_TIMEOUT_SECONDS,
-        gt=0.0,
-    )
+    media_body_stream_timeout_seconds: float = Field(default=120.0, gt=0.0)
+    document_body_stream_timeout_seconds: float = Field(default=120.0, gt=0.0)
     first_byte_timeout_seconds: float = Field(default=10.0, gt=0.0)
     read_chunk_timeout_seconds: float = Field(default=5.0, gt=0.0)
     max_idle_seconds: float = Field(default=15.0, gt=0.0)
