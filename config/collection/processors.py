@@ -5,12 +5,6 @@ from __future__ import annotations
 from pydantic import Field, model_validator
 
 from config.base.settings_model import SettingsModel
-from config.environment.default_values import (
-    DEFAULT_AUDIO_SAMPLE_RATE_HZ,
-    DEFAULT_FEED_PROCESSOR_MAX_ENTRIES,
-    DEFAULT_PROCESSOR_RETRIES,
-    DEFAULT_TEXT_SAMPLE_BYTES,
-)
 
 
 class BaseProcessorSettings(SettingsModel):
@@ -22,7 +16,7 @@ class BaseProcessorSettings(SettingsModel):
 
     enabled: bool = Field(default=True)
     timeout_seconds: int = Field(default=30, ge=1, le=3600)
-    max_retries: int = Field(default=DEFAULT_PROCESSOR_RETRIES, ge=0, le=32)
+    max_retries: int = Field(default=3, ge=0, le=32)
     max_concurrent_tasks: int = Field(default=8, ge=0, le=1024)
     persist_raw: bool = Field(default=True)
 
@@ -31,11 +25,7 @@ class AudioProcessorSettings(BaseProcessorSettings):
     analysis_workers: int = Field(default=2, ge=1, le=64)
     analysis_queue_size: int = Field(default=80, ge=1, le=10000)
     analysis_timeout_seconds: float = Field(default=180.0, gt=0.0, le=3600.0)
-    sample_rate: int = Field(
-        default=DEFAULT_AUDIO_SAMPLE_RATE_HZ,
-        ge=8000,
-        le=192000,
-    )
+    sample_rate: int = Field(default=16_000, ge=8000, le=192000)
     normalize_audio: bool = True
     run_transcription: bool = False
     transcription_language: str | None = Field(
@@ -71,11 +61,7 @@ class PdfTextExtractionSettings(SettingsModel):
 class DocumentNativeTextSettings(SettingsModel):
     """Bounded native document text retained during collection."""
 
-    max_characters: int = Field(
-        default=DEFAULT_TEXT_SAMPLE_BYTES,
-        ge=0,
-        le=1_000_000,
-    )
+    max_characters: int = Field(default=4096, ge=0, le=1_000_000)
 
 
 class HtmlTextPreviewSettings(SettingsModel):
@@ -284,7 +270,7 @@ class PageProcessorSettings(BaseProcessorSettings):
     text_extraction: PageTextExtractionSettings = Field(
         default_factory=PageTextExtractionSettings
     )
-    html_charset_scan_bytes: int = DEFAULT_TEXT_SAMPLE_BYTES
+    html_charset_scan_bytes: int = 4096
     extract_links: bool = True
     extract_assets: bool = True
     extract_metadata: bool = True
@@ -372,10 +358,7 @@ class FeedProcessorSettings(BaseProcessorSettings):
     parse_rss: bool = True
     parse_atom: bool = True
     deduplicate_entries: bool = True
-    max_feed_entries: int = Field(
-        default=DEFAULT_FEED_PROCESSOR_MAX_ENTRIES,
-        ge=1,
-    )
+    max_feed_entries: int = Field(default=500, ge=1)
     schedule_entry_links: bool = True
     max_feed_items_discovered: int = Field(default=16, ge=0)
     max_feed_items_discovered_under_pressure: int = Field(default=2, ge=0)
