@@ -7,11 +7,12 @@ from contextlib import AbstractContextManager
 
 import torch
 
-from evaluator.aggregation import summarize_task_metrics
 from evaluator.metric_runner import evaluate, evaluate_with_runtime
 from multimodal.model.contracts import CollatedBatch
 from multimodal.model.model import MultimodalModel
 from multimodal.tokenization.text import VocabularyTokenizer
+
+_PAIR_TASKS = frozenset({"text_image_pairs", "audio_transcript"})
 
 __all__ = [
     "evaluate_task_metrics",
@@ -62,3 +63,29 @@ def evaluate_task_metrics_with_runtime(
         autocast_factory=autocast_factory,
         tokenizer=tokenizer,
     )
+
+
+def summarize_task_metrics(
+    per_task_results: dict[str, list[dict[str, float]]],
+) -> dict[str, dict[str, float]]:
+    """Aggregate repeated per-task metric observations by canonical metric."""
+
+    output: dict[str, dict[str, float]] = {}
+    for task, items in per_task_results.items():
+        if not items:
+            continue
+        if task in _PAIR_TASKS:
+            output[task] = {
+                "mean_recall_at_1": float(
+                    sum(item["mean_recall_at_1"] for item in items)
+                    / len(items)
+                )
+            }
+        else:
+            output[task] = {
+                "embedding_similarity": float(
+                    sum(item["embedding_similarity"] for item in items)
+                    / len(items)
+                )
+            }
+    return output
