@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import torch
 
 from mmcrawler_datasets.collation.tensor_ops import IGNORE_LABEL
-from mmcrawler_datasets.dataloader import build_dataloader
-from mmcrawler_datasets.schema import DatasetSplit
 from multimodal.model.contracts import CollatedBatch, LOGICAL_TO_PHYSICAL_MODALITIES
 from multimodal.model.initialization import initialize_model_from_scratch
 from multimodal.tasks.registry import get_task, task_requires_causal_decoder
@@ -35,9 +33,7 @@ if TYPE_CHECKING:
     from config.multimodal.model_settings import ModelSettings
     from config.multimodal.training_settings import TrainingSettings
     from logger.project_logger import ProjectLogger
-    from mmcrawler_datasets.dataset import MultimodalJsonlDataset
     from multimodal.model.model import MultimodalModel
-    from multimodal.tokenization.text import VocabularyTokenizer
     from training.runtime.planner import TrainingScalePlan
 
 
@@ -244,29 +240,6 @@ class PreparedTrainingRuntime:
     dataset_manifest_sha256: str
 
 
-def open_training_split(
-    *,
-    dataset_root: Path,
-    split: DatasetSplit,
-    model_settings: ModelSettings,
-    training_settings: TrainingSettings,
-    tokenizer: VocabularyTokenizer,
-    logger: ProjectLogger,
-    distributed: bool = True,
-) -> tuple[MultimodalJsonlDataset, torch.utils.data.DataLoader[Any]]:
-    """Open one canonical split with the configured dataloader policy."""
-
-    return build_dataloader(
-        dataset_root=dataset_root,
-        split=split,
-        model_settings=model_settings,
-        training_settings=training_settings,
-        tokenizer=tokenizer,
-        logger=logger,
-        distributed=distributed,
-    )
-
-
 def prepare_training_runtime(
     *,
     model_settings: ModelSettings,
@@ -321,8 +294,7 @@ def prepare_training_runtime(
     optimizer = optimizer_factory(model, training_settings)
     grad_scaler = build_grad_scaler(precision_runtime)
     completed_optimizer_steps = resume_optimizer_steps(settings=training_settings)
-    scheduler = build_training_scheduler(
-        scheduler_factory=scheduler_factory,
+    scheduler = scheduler_factory(
         optimizer=optimizer,
         settings=training_settings,
         num_training_batches=num_training_batches,
@@ -358,30 +330,10 @@ def prepare_training_runtime(
     )
 
 
-def build_training_scheduler(
-    *,
-    scheduler_factory: SchedulerFactory,
-    optimizer: torch.optim.Optimizer,
-    settings: TrainingSettings,
-    num_training_batches: int,
-    completed_optimizer_steps: int,
-) -> object | None:
-    """Build a scheduler against the explicit optimizer-update cadence."""
-
-    return scheduler_factory(
-        optimizer=optimizer,
-        settings=settings,
-        num_training_batches=num_training_batches,
-        completed_optimizer_steps=completed_optimizer_steps,
-    )
-
-
 __all__ = [
     "PreparedTrainingBackend",
     "PreparedTrainingRuntime",
     "SchedulerFactory",
-    "build_training_scheduler",
-    "open_training_split",
     "prepare_training_backend",
     "prepare_training_runtime",
     "validate_dense_decoder_batch",
