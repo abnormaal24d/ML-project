@@ -63,6 +63,7 @@ class TrainingSettings(SettingsModel):
     preference_beta: float = Field(default=0.1, gt=0.0)
     reference_free_preference: bool = True
     safety_loss_weight: float = Field(default=1.0, ge=0.0)
+    contrastive_temperature: float = Field(default=0.07, gt=0.0)
     text_tokenizer_backend: Literal["subword"] = "subword"
     text_tokenizer_name: str = "repo_subword"
     text_tokenizer_max_tokens: int = Field(default=128, gt=0)
