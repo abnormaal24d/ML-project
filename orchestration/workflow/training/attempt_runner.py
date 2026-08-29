@@ -120,7 +120,6 @@ class TrainingAttemptRunner:
             else None
         )
 
-        # TRAINING stage - single async operation
         training_stage = await self._run_training_stage(
             dataset_manifest_hash=dataset_manifest_hash,
             training_root=training_root,
@@ -140,7 +139,6 @@ class TrainingAttemptRunner:
                 f"Expected _TrainingStageOutput, got {type(training).__name__}"
             )
 
-        # RECEIPT stage
         receipt_stage = await self._run_receipt_stage(
             execution=training.execution,
             identity=identity,
@@ -151,7 +149,6 @@ class TrainingAttemptRunner:
         if receipt_stage.error is not None:
             raise receipt_stage.error
 
-        # EVALUATION stage (primary only)
         evaluation = None
         if is_primary:
             evaluation_stage = await self._run_evaluation_stage(
@@ -165,7 +162,6 @@ class TrainingAttemptRunner:
                 raise evaluation_stage.error
             evaluation = evaluation_stage.result
 
-        # Terminal attempt completion
         required_stages = (
             (
                 TrainingOperationStage.TRAINING,
@@ -206,8 +202,6 @@ class TrainingAttemptRunner:
         deterministic: bool | None,
         snapshot_id: str,
     ) -> StageResult[_TrainingStageOutput]:
-        from training.runtime.trainer import train_and_collect_results
-
         async def execute_training() -> _TrainingStageOutput:
             trainer, effective_training = self._runtime_factory.create(
                 training_root=training_root,
@@ -238,9 +232,8 @@ class TrainingAttemptRunner:
             )
 
             execution = await self._run_blocking(
-                train_and_collect_results,
-                trainer=trainer,
-                training_root=training_root,
+                trainer.train,
+                dataset_root=training_root,
                 checkpoint_path=checkpoint_path,
                 export_directory=export_directory,
                 dataset_manifest_sha256=dataset_manifest_hash,
@@ -260,7 +253,6 @@ class TrainingAttemptRunner:
                 execution=execution,
             )
 
-        # Write started before training
         self._status_store.write_started(
             identity=identity,
             training_root=training_root,
