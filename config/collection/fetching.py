@@ -12,9 +12,6 @@ from config.base.settings_model import SettingsModel
 from config.collection.value_normalizers import (
     as_candidates,
 )
-from config.environment.default_values import (
-    DEFAULT_RESPONSE_SNIFF_BYTE_COUNT,
-)
 
 
 class FetcherSettings(SettingsModel):
@@ -139,9 +136,7 @@ class ResponseBodyReaderSettings(SettingsModel):
     binary_chunk_size: int = Field(default=524_288, ge=1)
     large_binary_chunk_size: int = Field(default=1_048_576, ge=1)
     large_body_threshold_bytes: int = Field(default=8_000_000, ge=1)
-    sniff_byte_count: int = Field(
-        default=DEFAULT_RESPONSE_SNIFF_BYTE_COUNT, ge=1
-    )
+    sniff_byte_count: int = Field(default=4096, ge=1)
     preserve_partial_files: bool = False
     max_stalled_reads: int = Field(default=2, ge=1)
     max_decompression_ratio: float = Field(default=100.0, ge=1.0, le=1_000.0)
