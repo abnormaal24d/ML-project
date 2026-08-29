@@ -58,7 +58,6 @@ model_min_val_samples = 20
 model_min_test_samples = 20
 model_min_training_batches = 5
 model_max_test_train_loss_ratio = 2.5
-min_task_samples = {}
 
 [training]
 run_mode = "smoke"
