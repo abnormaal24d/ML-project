@@ -404,10 +404,8 @@ def test_old_loss_evaluation_module_is_removed() -> None:
 
 
 def test_task_metrics_functions_defined_exactly_once() -> None:
-    for name, expected_path in (
-        ("evaluate_task_metrics", Path("evaluator/task_metrics.py")),
-        ("summarize_task_metrics", Path("evaluator/aggregation.py")),
-    ):
+    expected_path = Path("evaluator/task_metrics.py")
+    for name in ("evaluate_task_metrics", "summarize_task_metrics"):
         definitions = {
             path.relative_to(PROJECT_ROOT)
             for path in _production_paths()
@@ -416,6 +414,10 @@ def test_task_metrics_functions_defined_exactly_once() -> None:
         assert definitions == {expected_path}, (
             f"{name!r} must be owned solely by {expected_path}"
         )
+
+    assert not (PROJECT_ROOT / "evaluator/aggregation.py").exists(), (
+        "release metric aggregation belongs with the public task metric API"
+    )
 
 
 def test_no_production_module_imports_loss_owner_from_training() -> None:
