@@ -211,7 +211,7 @@ min_modality_samples_by_split = { train = { text = 24000, image = 20000, documen
 max_domain_share = 0.10
 max_language_share = 0.85
 min_speech_translation_bleu = 0.05
-min_task_samples = { text_pretrain = 30000, instruction_following = 5000, document_text_pair = 10000, image_text_pair = 25000, audio_text_pair = 2000, video_text_pair = 500, pdf_text_pair = 5000, speech_translation = 0, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 2500, document_summarization = 0, document_comparison = 0, table_extraction = 0, vqa = 2500, ocr_parse = 5000, speech_transcription = 0, audio_summarization = 0, audio_emotion = 0, audio_qa = 1000, video_qa = 500, video_summarization = 0, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 5000, cross_modal_consistency = 5000 }
+min_task_samples_by_workflow = { crawler_dataset = { text_pretrain = 30000, instruction_following = 5000, document_text_pair = 10000, image_text_pair = 25000, audio_text_pair = 2000, video_text_pair = 500, pdf_text_pair = 5000, speech_translation = 0, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 2500, document_summarization = 0, document_comparison = 0, table_extraction = 0, vqa = 2500, ocr_parse = 5000, speech_transcription = 0, audio_summarization = 0, audio_emotion = 0, audio_qa = 1000, video_qa = 500, video_summarization = 0, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 5000, cross_modal_consistency = 5000 } }
 require_all_modalities_in_train = true
 require_all_modalities_in_val = true
 require_all_modalities_in_test = true
@@ -367,9 +367,8 @@ disable_undercovered_tasks = false
 drop_samples_with_invalid_targets = true
 dynamic_sampling = true
 
-# Production_v1 required tasks (all five modalities), each carrying the
-# evaluation floors declared for production. min_samples mirrors the
-# dataset/training minima of the legacy production environment.
+# Production_v1 release contract carries release acceptance floors; these are
+# independent of crawler workflow coverage and training split preflight.
 # Metrics match evaluator/task_metrics.py output exactly.
 [[release.tasks]]
 name = "text_pretrain"
