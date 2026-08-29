@@ -16,7 +16,7 @@ _SPLIT_TOTAL_TOLERANCE = 1e-6
 
 
 def _validate_dataset_splits(settings: Settings) -> None:
-    """Validate the relational invariant for dataset split ratios."""
+    """Validate only the cross-field dataset split invariant."""
 
     split_settings = (
         ("curation", settings.datasets.splits.curation),
@@ -29,15 +29,6 @@ def _validate_dataset_splits(settings: Settings) -> None:
             float(splits.val_ratio),
             float(splits.test_ratio),
         )
-
-        if not all(math.isfinite(value) for value in ratios):
-            raise ValueError(f"{split_name} split ratios must be finite numbers")
-
-        if any(value < 0.0 or value > 1.0 for value in ratios):
-            raise ValueError(
-                f"{split_name} split ratios must be between 0.0 and 1.0"
-            )
-
         if not math.isclose(
             math.fsum(ratios),
             1.0,
