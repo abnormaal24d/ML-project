@@ -18,6 +18,7 @@ from evaluator.task_metrics import (
     evaluate_task_metrics_with_runtime,
     summarize_task_metrics,
 )
+from mmcrawler_datasets.dataloader import build_dataloader
 from mmcrawler_datasets.schema import DatasetSplit
 from mmcrawler_datasets.validation.training_preflight import (
     validate_effective_training_split,
@@ -47,7 +48,6 @@ from .precision import autocast_context
 from .preparation import (
     PreparedTrainingRuntime,
     SchedulerFactory,
-    open_training_split,
     prepare_training_runtime,
 )
 from .result_assembly import assemble_training_run_result
@@ -417,7 +417,7 @@ class MultimodalTrainer:
         split: DatasetSplit,
         distributed: bool = True,
     ) -> tuple[MultimodalJsonlDataset, torch.utils.data.DataLoader[Any]]:
-        return open_training_split(
+        return build_dataloader(
             dataset_root=dataset_root,
             split=split,
             model_settings=self._model_settings,
