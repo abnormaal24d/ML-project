@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from contextlib import AbstractContextManager
-from typing import Any
 
 import torch
+from torch import Tensor
 
 from evaluator.metric_contracts import (
     EvaluationPlan,
@@ -61,12 +61,18 @@ def _evaluate_task_metric_model(
     *,
     model: MultimodalModel,
     batch: CollatedBatch,
-) -> Mapping[str, Any]:
-    """Run the model once and enforce the mapping output contract."""
+) -> Mapping[str, Tensor]:
+    """Run the model once and enforce the metric tensor output contract."""
 
     outputs = model(batch)
     if not isinstance(outputs, Mapping):
         raise TypeError("model outputs must be a mapping of metric tensors")
+    invalid = [name for name, value in outputs.items() if not isinstance(value, Tensor)]
+    if invalid:
+        raise TypeError(
+            "metric model outputs must contain tensors only: "
+            + ", ".join(sorted(str(name) for name in invalid))
+        )
     return outputs
 
 
