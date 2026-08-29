@@ -1,5 +1,4 @@
-# Dev profile: interactive, unfrozen, mirrors the legacy dev environment
-# (public_science_small sources, tiny Whisper, rapidocr, default training).
+# Dev profile: interactive, unfrozen development configuration.
 profile = "dev"
 
 [logging]
@@ -44,9 +43,8 @@ selectors = [
     { name = "noaa", max_seeds = 12 },
 ]
 
-# Canonical dev scheduling/autoscaling contract. Migrated from the legacy
-# config/files/environments/dev.toml: the profiles are the single runtime
-# truth, there is no fallback to the legacy environment files.
+# Canonical dev scheduling/autoscaling contract. The profile is the single
+# runtime truth; there is no fallback environment configuration.
 [collection.scheduling]
 max_seen = 100000
 max_depth = 4
@@ -177,8 +175,8 @@ model_min_training_batches = 50
 model_max_test_train_loss_ratio = 2.5
 min_active_modalities = 0
 min_alignment_coverage = 0.0
-min_evaluation_metrics = { accuracy = 0.45, macro_f1 = 0.20, retrieval_accuracy = 0.20, embedding_similarity_mean = 0.20 }
-min_task_samples = { text_pretrain = 100, document_text_pair = 50, pdf_text_pair = 0, image_text_pair = 20, audio_text_pair = 5, video_text_pair = 5, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 25, document_summarization = 25, document_comparison = 25, table_extraction = 0, vqa = 10, ocr_parse = 0, speech_transcription = 0, audio_summarization = 0, video_qa = 3, video_summarization = 3, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 0, cross_modal_consistency = 50 }
+min_evaluation_metrics = { accuracy = 0.45, macro_f1 = 0.20, mean_recall_at_1 = 0.20, embedding_similarity_mean = 0.20 }
+min_task_samples_by_workflow = { crawler_dataset = { text_pretrain = 100, document_text_pair = 50, pdf_text_pair = 0, image_text_pair = 20, audio_text_pair = 5, video_text_pair = 5, summarization = 0, classification = 0, information_extraction = 0, doc_qa = 25, document_summarization = 25, document_comparison = 25, table_extraction = 0, vqa = 10, ocr_parse = 0, speech_transcription = 0, audio_summarization = 0, video_qa = 3, video_summarization = 3, scene_understanding = 0, action_recognition = 0, multimodal_retrieval = 0, cross_modal_consistency = 50 } }
 require_all_modalities_in_train = false
 require_all_modalities_in_val = false
 require_all_modalities_in_test = false
