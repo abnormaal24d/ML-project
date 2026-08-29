@@ -124,12 +124,10 @@ def build_trainer(
         tokenizer=tokenizer,
         model_exporter=model_exporter,
         logger=logger,
-        training_backend=prepared_backend.name,
         model_factory=create_model,
         loss_factory=build_training_loss,
         optimizer_factory=build_optimizer,
         scheduler_factory=build_lr_scheduler,
-        project_root=project_paths.project_root,
         checkpoint_contract=checkpoint_contract,
     )
 
@@ -217,7 +215,6 @@ def build_training_loss(
     This composition function only constructs the loss instance.
     """
 
-    from config.environment.default_values import DEFAULT_LOSS_WEIGHTS
     from training.losses.objective import SupervisedOrSelfSupervisedLoss
 
     preference_mode = settings.preference_loss
@@ -229,11 +226,8 @@ def build_training_loss(
 
     loss_weights = resolve_objective_loss_weights(settings)
 
-    # Weight map validation is performed by the domain layer
-    # This composition function only constructs the loss instance
-
     return SupervisedOrSelfSupervisedLoss(
-        contrastive_temperature=DEFAULT_LOSS_WEIGHTS.contrastive_temperature,
+        contrastive_temperature=settings.contrastive_temperature,
         alignment_score_exponent=settings.alignment_loss_power,
         hard_negative_margin=settings.hard_negative_margin,
         training_backend=settings.training_backend,
