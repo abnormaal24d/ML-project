@@ -46,6 +46,7 @@ from .offline import offline_training_guard
 from .precision import autocast_context
 from .preparation import (
     PreparedTrainingRuntime,
+    SchedulerFactory,
     open_training_split,
     prepare_training_runtime,
 )
@@ -79,7 +80,6 @@ class MultimodalTrainer:
         tokenizer: VocabularyTokenizer,
         model_exporter: Callable[..., dict[str, str]],
         logger: ProjectLogger,
-        training_backend: str,
         model_factory: Callable[[ModelSettings], MultimodalModel],
         loss_factory: Callable[
             [TrainingSettings],
@@ -89,13 +89,12 @@ class MultimodalTrainer:
             [torch.nn.Module, TrainingSettings],
             torch.optim.Optimizer,
         ],
-        scheduler_factory: Callable[..., object | None],
-        project_root: Path,
+        scheduler_factory: SchedulerFactory,
         checkpoint_contract: CheckpointContract | None = None,
     ) -> None:
         if (
             training_settings.training_stage == "PREFERENCE_TUNING"
-            and training_backend != "dense_transformer"
+            and training_settings.training_backend != "dense_transformer"
         ):
             raise ValueError(
                 "PREFERENCE_TUNING requires training_backend="
@@ -106,12 +105,10 @@ class MultimodalTrainer:
         self._tokenizer = tokenizer
         self._model_exporter = model_exporter
         self._logger = logger
-        self._training_backend = training_backend
         self._model_factory = model_factory
         self._loss_factory = loss_factory
         self._optimizer_factory = optimizer_factory
         self._scheduler_factory = scheduler_factory
-        self._project_root = project_root.resolve()
         self._checkpoint_contract = checkpoint_contract
         self._device = resolve_device(training_settings.device)
 
@@ -197,7 +194,7 @@ class MultimodalTrainer:
                 "multimodal_training_loop_started",
                 dataset_root=dataset_root.as_posix(),
                 checkpoint_path=checkpoint_path.as_posix(),
-                training_backend=self._training_backend,
+                training_backend=self._training_settings.training_backend,
                 epochs=self._training_settings.epochs,
                 batch_size=self._training_settings.batch_size,
                 sample_count=readiness.sample_count,
@@ -588,30 +585,7 @@ def _required_batch_count(
     return batch_count
 
 
-def train_and_collect_results(
-    *,
-    trainer: MultimodalTrainer,
-    training_root: Path,
-    checkpoint_path: Path,
-    export_directory: Path,
-    dataset_manifest_sha256: str,
-    cancel_event: threading.Event | None = None,
-    run_id: str | None = None,
-) -> TrainingRunResult:
-    """Train once and return typed training results."""
-
-    return trainer.train(
-        dataset_root=training_root,
-        checkpoint_path=checkpoint_path,
-        export_directory=export_directory,
-        dataset_manifest_sha256=dataset_manifest_sha256,
-        cancel_event=cancel_event,
-        run_id=run_id,
-    )
-
-
 __all__ = [
     "MultimodalTrainer",
     "evaluate_selected_checkpoint",
-    "train_and_collect_results",
 ]
